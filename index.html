@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://telegram.org 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Missed Ads report</title>
+<!--
+  The Missed Ad Report Bot's form, opened from the Form button under the bot's text box (a Telegram Mini App).
+  It holds no report data and never contacts any server: the bot puts the recent days' status and the market codes
+  in this page's link, and the choice goes back to the bot through Telegram (Telegram.WebApp.sendData), after which
+  Telegram closes the page and the bot answers in the chat.
+-->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --bg:var(--tg-theme-secondary-bg-color,#efeff4);--card:var(--tg-theme-section-bg-color,var(--tg-theme-bg-color,#fff));
+  --ink:var(--tg-theme-text-color,#1f1e1b);--mut:var(--tg-theme-hint-color,#7d7d85);--acc:var(--tg-theme-button-color,#2481cc);
+  --acc-ink:var(--tg-theme-button-text-color,#fff);--line:var(--tg-theme-section-separator-color,rgba(128,128,128,.25));
+  --link:var(--tg-theme-link-color,var(--acc));--warn:#b25e09;
+}
+@media (prefers-color-scheme: dark){:root:not([data-tg]){--bg:#1b1b1d;--card:#2a2a2e;--ink:#ececee;--mut:#9b9ba3;--acc:#5aa7e8;--acc-ink:#0d1b28;--warn:#f0a03a}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:12px 16px calc(24px + env(safe-area-inset-bottom))}
+h1{font-size:17px;font-weight:600;margin:4px 4px 12px}
+.sec{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.lbl{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:none;color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+.chip small{color:var(--mut);font-size:12px;margin-left:4px}
+.chip.on{border-color:var(--acc);background:var(--acc);color:var(--acc-ink);font-weight:600}
+.chip.on small{color:var(--acc-ink);opacity:.85}
+input[type=date],select,input[type=text]{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+select{appearance:auto}
+#olderBox{margin-top:10px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);background:none;color:var(--ink);font:inherit;font-size:14px;padding:9px 4px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--acc);color:var(--acc-ink);font-weight:600}
+.hint{font-size:13px;color:var(--mut);margin:8px 2px 0}
+.hint.warn{color:var(--warn)}
+.tick{display:flex;gap:10px;align-items:center;font-size:15px;margin-top:12px;cursor:pointer}
+.tick input{width:20px;height:20px;accent-color:var(--acc)}
+.off{opacity:.4;pointer-events:none}
+#go{display:none;width:100%;border:0;border-radius:10px;padding:13px;font:inherit;font-weight:600;background:var(--acc);color:var(--acc-ink);cursor:pointer}
+#preview{display:none;font-size:13px;background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+#sent{white-space:pre-wrap;font:12px/1.4 ui-monospace,Consolas,monospace;margin:8px 0 0}
+.foot{font-size:12px;color:var(--mut);margin:4px 4px 0}
+</style>
+</head>
+<body>
+<div id="preview">Preview outside Telegram. In the bot, open this form from the <b>Form</b> button under the text box.<pre id="sent"></pre></div>
+<h1>Missed Ads report</h1>
+
+<div class="sec" id="daySec">
+  <span class="lbl">Day</span>
+  <div class="chips" id="days"></div>
+  <div id="olderBox" hidden><input type="date" id="older" aria-label="Older date"></div>
+  <p class="hint" id="dayHint"></p>
+</div>
+
+<div class="sec" id="marketSec">
+  <span class="lbl">Market</span>
+  <select id="market" aria-label="Market"></select>
+  <p class="hint" id="marketHint" hidden></p>
+  <label class="tick" id="usualRow" hidden><input type="checkbox" id="usual"><span id="usualText"></span></label>
+</div>
+
+<div class="sec" id="showSec">
+  <span class="lbl">Show</span>
+  <div class="seg" id="show">
+    <button type="button" data-v="report" class="on">Report</button>
+    <button type="button" data-v="clients">Clients</button>
+    <button type="button" data-v="insights">Insights</button>
+  </div>
+  <p class="hint" id="showHint"></p>
+</div>
+
+<div class="sec">
+  <span class="lbl">Or find a client</span>
+  <input type="text" id="client" maxlength="60" autocomplete="off" autocapitalize="characters" placeholder="Part of the name, e.g. honda">
+  <p class="hint">Finds the client in every market over the last few days, with the editions it appeared in.</p>
+</div>
+
+<button type="button" id="go">Show report</button>
+<p class="foot" id="foot"></p>
+
+<script>
+(function () {
+  "use strict";
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var inTelegram = !!(tg && tg.platform && tg.platform !== "unknown");
+  var q = new URLSearchParams(location.search);
+  var DAY = 864e5;
+  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var $ = function (id) { return document.getElementById(id); };
+
+  // What the bot put in the link: d=2026-11-01:a:DEL.CHE~2026-10-31:c:DEL.CHE.MUM (a still arriving, c complete; markets
+  // with missed clients, busiest first), k = every market code, sel = the day to start on, m = the market to start on,
+  // u = the person's usual market, n = days on Home, back = how many days back a report can go, at = when the bot built it.
+  function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function parseIso(s) { var p = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return p ? new Date(+p[1], p[2] - 1, +p[3]) : null; }
+  function label(d) { return WEEKDAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()]; }
+  function codes(s) { return (s || "").split(".").filter(function (c) { return /^[A-Z]{3}$/.test(c); }); }
+
+  var known = {};
+  (q.get("d") || "").split("~").forEach(function (part) {
+    var f = part.split(":");
+    if (parseIso(f[0])) known[f[0]] = { status: f[1] === "c" ? "complete" : f[1] === "a" ? "arriving" : "", markets: codes(f[2]) };
+  });
+  var allMarkets = codes(q.get("k"));
+  var usual = codes(q.get("u"))[0] || "";
+  var homeDays = Math.min(Math.max(parseInt(q.get("n"), 10) || 4, 1), 7);
+  var back = Math.min(Math.max(parseInt(q.get("back"), 10) || 14, homeDays), 31);
+
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var yesterday = new Date(today.getTime() - DAY);
+  var earliest = new Date(today.getTime() - back * DAY);
+  var recent = [];
+  for (var i = 0; i < homeDays; i++) recent.push(new Date(yesterday.getTime() - i * DAY));
+  var olderLatest = new Date(recent[recent.length - 1].getTime() - DAY);
+
+  var state = { day: null, older: false, market: "All", wanted: "All", show: "report" };  // wanted: the market picked, shown when the day has it
+  var startDay = parseIso(q.get("sel"));  // the bot's newest complete day; else the newest one marked complete, else yesterday
+  var firstComplete = recent.filter(function (d) { return (known[iso(d)] || {}).status === "complete"; })[0];
+  state.day = iso(startDay && recent.some(function (d) { return iso(d) === iso(startDay); }) ? startDay : firstComplete || recent[0]);
+  state.wanted = codes(q.get("m"))[0] || "All";
+
+  function haptic() { try { tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged(); } catch (e) {} }
+
+  function renderDays() {
+    var box = $("days");
+    box.textContent = "";
+    recent.forEach(function (d) {
+      var b = document.createElement("button");
+      var info = known[iso(d)] || {};
+      b.type = "button";
+      b.className = "chip" + (!state.older && state.day === iso(d) ? " on" : "");
+      b.textContent = label(d);
+      if (info.status) {
+        var s = document.createElement("small");
+        s.textContent = info.status === "complete" ? "✓" : "arriving";
+        b.appendChild(s);
+      }
+      b.onclick = function () { state.day = iso(d); state.older = false; haptic(); update(); };
+      box.appendChild(b);
+    });
+    var o = document.createElement("button");
+    o.type = "button";
+    o.className = "chip" + (state.older ? " on" : "");
+    o.textContent = state.older && state.day ? label(parseIso(state.day)) : "Older…";
+    o.onclick = function () {
+      state.older = true; haptic();
+      var input = $("older");
+      if (!input.value) input.value = iso(olderLatest);
+      state.day = input.value;
+      update();
+      try { input.showPicker && input.showPicker(); } catch (e) {}
+    };
+    box.appendChild(o);
+    $("olderBox").hidden = !state.older;
+    var info = known[state.day];
+    $("dayHint").className = "hint";
+    $("dayHint").textContent = state.older ? "Reports go back to " + label(earliest) + "."
+      : info && info.status === "arriving" ? "Competitor data for this day is still arriving, so more clients may appear later."
+      : info && info.status === "complete" ? "Nearly all competitor editions are in for this day." : "";
+  }
+
+  function renderMarkets() {
+    var info = known[state.day];
+    var list = info && !state.older ? info.markets : allMarkets.slice().sort();
+    var select = $("market");
+    select.textContent = "";
+    [["All", "All markets"]].concat(list.map(function (c) { return [c, c]; })).forEach(function (pair) {
+      var opt = document.createElement("option");
+      opt.value = pair[0];
+      opt.textContent = pair[1] + (pair[0] === usual ? "  (yours)" : "");
+      select.appendChild(opt);
+    });
+    var hint = $("marketHint");
+    hint.hidden = true;
+    state.market = state.wanted === "All" || list.indexOf(state.wanted) >= 0 ? state.wanted : "All";
+    if (state.market !== state.wanted && info && !state.older) {
+      hint.textContent = state.wanted + " has no missed clients on " + label(parseIso(state.day)) + ".";
+      hint.className = "hint warn";
+      hint.hidden = false;
+    }
+    select.value = state.market;
+    if (info && !state.older && hint.hidden) {
+      hint.textContent = list.length ? "Markets with missed clients that day, busiest first." : "No missed clients for this day yet.";
+      hint.className = "hint";
+      hint.hidden = false;
+    }
+    var showUsual = state.market !== "All" && state.market !== usual;
+    $("usualRow").hidden = !showUsual;
+    $("usualText").textContent = "Make " + state.market + " my usual market";
+    if (!showUsual) $("usual").checked = false;
+  }
+
+  function buttonText() {
+    if ($("client").value.trim().length >= 2) return "Find client";
+    return { report: "Show report", clients: "Show clients", insights: "Show insights" }[state.show];
+  }
+
+  function update() {
+    renderDays();
+    renderMarkets();
+    Array.prototype.forEach.call($("show").children, function (b) { b.classList.toggle("on", b.dataset.v === state.show); });
+    $("showHint").textContent = state.show === "insights" ? "Insights cover the 14 days up to the day picked." : "";
+    var finding = $("client").value.trim().length >= 2;
+    ["daySec", "marketSec", "showSec"].forEach(function (id) { $(id).classList.toggle("off", finding); });
+    if (inTelegram) tg.MainButton.setText(buttonText());
+    else $("go").textContent = buttonText();
+  }
+
+  $("market").onchange = function () { state.wanted = this.value; haptic(); update(); };
+  $("older").min = iso(earliest);
+  $("older").max = iso(olderLatest);
+  $("older").onchange = function () {
+    var d = parseIso(this.value);
+    if (d && d >= earliest && d <= olderLatest) { state.day = this.value; update(); }
+  };
+  Array.prototype.forEach.call($("show").children, function (b) {
+    b.onclick = function () { state.show = b.dataset.v; haptic(); update(); };
+  });
+  $("client").oninput = update;
+  $("client").onkeydown = function (e) { if (e.key === "Enter") { this.blur(); submit(); } };
+
+  function submit() {
+    var client = $("client").value.trim();
+    var d = parseIso(state.day);
+    if (client.length < 2 && !(d && d >= earliest && d <= yesterday)) {
+      $("dayHint").textContent = "Pick a day from " + label(earliest) + " to " + label(yesterday) + ".";
+      $("dayHint").className = "hint warn";
+      return;
+    }
+    var finding = client.length >= 2;
+    var payload = { v: 1, day: state.day, market: state.market, show: state.show, client: finding ? client : "",
+                    usual: !finding && $("usual").checked };
+    var data = JSON.stringify(payload);
+    if (!inTelegram) { $("sent").textContent = "Would send to the bot:\n" + data; return; }
+    try {
+      tg.sendData(data);  // Telegram closes the form and the bot gets the choice
+    } catch (e) {
+      tg.showAlert("This form can only send from the Form button under the bot's text box.");
+    }
+  }
+
+  if (inTelegram) {
+    document.documentElement.setAttribute("data-tg", "");
+    tg.ready();
+    tg.expand();
+    tg.MainButton.setText(buttonText());
+    tg.MainButton.onClick(submit);
+    tg.MainButton.show();
+  } else {
+    $("preview").style.display = "block";
+    $("go").style.display = "block";
+    $("go").onclick = submit;
+  }
+  var at = q.get("at");
+  $("foot").textContent = at ? "Day status as of " + at.replace("T", " ") + "." : "";
+  update();
+})();
+</script>
+</body>
+</html>
