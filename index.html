@@ -47,12 +47,13 @@ select{appearance:auto}
 .off{opacity:.4;pointer-events:none}
 #go{display:none;width:100%;border:0;border-radius:10px;padding:13px;font:inherit;font-weight:600;background:var(--acc);color:var(--acc-ink);cursor:pointer}
 #preview{display:none;font-size:13px;background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px}
-#sent{white-space:pre-wrap;font:12px/1.4 ui-monospace,Consolas,monospace;margin:8px 0 0}
+#status{font-size:14px;margin:0 4px 12px;padding:10px 12px;border-radius:10px;background:var(--card);overflow-wrap:anywhere}
+#status.warn{color:var(--warn)}
 .foot{font-size:12px;color:var(--mut);margin:4px 4px 0}
 </style>
 </head>
 <body>
-<div id="preview">Preview outside Telegram. In the bot, open this form from the <b>Form</b> button under the text box.<pre id="sent"></pre></div>
+<div id="preview">Preview outside Telegram. In the bot, open this form from the <b>Form</b> button under the text box.</div>
 <h1>Missed Ads report</h1>
 
 <div class="sec" id="daySec">
@@ -85,6 +86,7 @@ select{appearance:auto}
   <p class="hint">Finds the client in every market over the last few days, with the editions it appeared in.</p>
 </div>
 
+<p id="status" hidden></p>
 <button type="button" id="go">Show report</button>
 <p class="foot" id="foot"></p>
 
@@ -93,6 +95,7 @@ select{appearance:auto}
   "use strict";
   var tg = window.Telegram && window.Telegram.WebApp;
   var inTelegram = !!(tg && tg.platform && tg.platform !== "unknown");
+  var fromKeyboard = inTelegram && !tg.initData;  // only the Form button under the text box can send; it opens with no initData
   var q = new URLSearchParams(location.search);
   var DAY = 864e5;
   var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -131,6 +134,15 @@ select{appearance:auto}
   state.wanted = codes(q.get("m"))[0] || "All";
 
   function haptic() { try { tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged(); } catch (e) {} }
+
+  function say(text, warn) {  // a line just above the button, scrolled into view
+    var s = $("status");
+    s.textContent = text;
+    s.className = warn ? "warn" : "";
+    s.hidden = false;
+    s.scrollIntoView({ block: "nearest" });
+  }
+  var NOT_FROM_BUTTON = "This form can only send when it is opened with the Form button under the bot's text box. Close it and tap Form there.";
 
   function renderDays() {
     var box = $("days");
@@ -242,11 +254,16 @@ select{appearance:auto}
     var payload = { v: 1, day: state.day, market: state.market, show: state.show, client: finding ? client : "",
                     usual: !finding && $("usual").checked };
     var data = JSON.stringify(payload);
-    if (!inTelegram) { $("sent").textContent = "Would send to the bot:\n" + data; return; }
+    if (!inTelegram) { say("Preview only. In Telegram this would send: " + data); return; }
+    if (!fromKeyboard) { say(NOT_FROM_BUTTON, true); return; }
     try {
       tg.sendData(data);  // Telegram closes the form and the bot gets the choice
+      say("Sending to the bot…");
+      setTimeout(function () {  // still open: Telegram didn't take it
+        say("Telegram didn't send the form (" + tg.platform + ", version " + tg.version + "). Close it, tap Form under the bot's text box and try again.", true);
+      }, 3000);
     } catch (e) {
-      tg.showAlert("This form can only send from the Form button under the bot's text box.");
+      say("Telegram refused the form: " + (e && e.message), true);
     }
   }
 
@@ -263,8 +280,10 @@ select{appearance:auto}
     $("go").onclick = submit;
   }
   var at = q.get("at");
-  $("foot").textContent = at ? "Day status as of " + at.replace("T", " ") + "." : "";
+  $("foot").textContent = (at ? "Day status as of " + at.replace("T", " ") + ". " : "")
+    + (inTelegram ? "Telegram " + tg.platform + " " + tg.version + (fromKeyboard ? ", opened from Form." : ", opened from a link.") : "");
   update();
+  if (inTelegram && !fromKeyboard) say(NOT_FROM_BUTTON, true);
 })();
 </script>
 </body>
