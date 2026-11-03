@@ -7,11 +7,14 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://telegram.org 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Missed Ads report</title>
 <!--
-  The Missed Ad Report Bot's form, opened from the Form button under the bot's text box (a Telegram Mini App).
-  It holds no report data and never contacts any server: the bot puts the recent days' status and the market codes
-  in this page's link, and the choice goes back to the bot through Telegram (Telegram.WebApp.sendData), after which
-  Telegram closes the page and the bot answers in the chat.
+  The Missed Ad Report Bot's page (a Telegram Mini App). It never contacts any server and holds no data of its own.
+  - Form: opened from the Form button under the bot's text box. The bot puts the recent days' status and the market
+    codes in the link; the choice goes back to the bot through Telegram (Telegram.WebApp.sendData), Telegram closes
+    the page, and the bot answers in the chat with a short card.
+  - Report: opened from that card's Open button. The bot puts the day's report in the part of the link after #R
+    (compressed JSON), which stays in the phone: the web host never receives it.
 -->
+<script>try { sessionStorage.removeItem("__telegram__initParams"); } catch (e) {}  // Telegram's script would reuse an earlier launch's</script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{
@@ -24,7 +27,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:12px 16px calc(24px + env(safe-area-inset-bottom))}
+body{margin:0 auto;max-width:760px;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:12px 16px calc(24px + env(safe-area-inset-bottom))}
 h1{font-size:17px;font-weight:600;margin:4px 4px 12px}
 .sec{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:12px}
 .lbl{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin-bottom:8px}
@@ -50,9 +53,71 @@ select{appearance:auto}
 #status{font-size:14px;margin:0 4px 12px;padding:10px 12px;border-radius:10px;background:var(--card);overflow-wrap:anywhere}
 #status.warn{color:var(--warn)}
 .foot{font-size:12px;color:var(--mut);margin:4px 4px 0}
+/* report view */
+.rsub{font-size:13px;color:var(--mut);margin:-8px 4px 12px}
+.ctl{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px;margin-bottom:12px}
+.ctl select{padding:9px 6px}
+.seg.two{grid-template-columns:repeat(2,1fr)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.tile{background:var(--card);border-radius:12px;padding:10px 12px;min-width:0}
+.tile b{display:block;font-size:22px;font-weight:700;line-height:1.2}
+.tile span{font-size:12px;color:var(--mut)}
+.mix{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:0 2px 6px;background:var(--line)}
+.mix i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:12px;color:var(--mut);margin:0 4px 12px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.card{background:var(--card);border-radius:12px;padding:12px 12px 4px;margin-bottom:12px}
+.lh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.lh b{font-size:16px}
+.lh span{font-size:13px;color:var(--mut);white-space:nowrap}
+.vs{font-size:12px;color:var(--mut);margin:2px 0 6px}
+.row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:8px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:9px 0;font:inherit;color:inherit;cursor:pointer}
+.row.nork{grid-template-columns:minmax(0,1fr) auto}
+.rk{font-size:12px;color:var(--mut);padding-top:2px}
+.mid{min-width:0;display:flex;flex-direction:column;gap:3px}
+.nm{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.meta,.pubs{font-size:12px;color:var(--mut)}
+.bar{display:block;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc);border-radius:3px}
+.rt{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.v{font-size:14px;font-weight:700;white-space:nowrap}
+.pcs{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end}
+.pc{font-size:10.5px;font-weight:700;color:#fff;border-radius:4px;padding:1px 5px;font-style:normal;white-space:nowrap}
+.pc.FP{background:#c0392b}.pc.BP{background:#d35400}.pc.RD{background:#5d6d7e}.pc.P3{background:#138d75}.pc.P5{background:#2471a3}.pc.Others{background:#7f7f86}
+.more{display:block;width:100%;background:none;border:0;border-top:1px solid var(--line);color:var(--link);font:inherit;font-size:14px;padding:10px 0;cursor:pointer}
+.note{font-size:13px;color:var(--mut);margin:0 4px 12px}
+.note.warn{color:var(--warn)}
+.count{font-size:13px;color:var(--mut);margin:10px 4px 6px}
+.backbtn{background:none;border:0;color:var(--link);font:inherit;font-size:15px;padding:4px 0 8px;cursor:pointer}
+#detail h2{font-size:18px;margin:4px 4px 2px;overflow-wrap:anywhere}
+.dmeta{font-size:13px;color:var(--mut);margin:0 4px 4px}
+.big{font-size:15px;margin:0 4px 12px}
+.big b{font-size:20px}
+.pub{border-top:1px solid var(--line);padding:8px 0}
+.pubh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
+.pubh b{font-weight:600}
+.ed{display:grid;grid-template-columns:minmax(0,1fr) auto 76px;gap:8px;align-items:center;font-size:13px;padding:4px 0 0}
+.card > .row:first-child{border-top:0}
+.ed span:first-child{overflow-wrap:anywhere}
 </style>
 </head>
 <body>
+<div id="reportView" hidden>
+  <h1 id="rTitle">Missed Ads report</h1>
+  <p class="rsub" id="rSub"></p>
+  <div class="ctl">
+    <select id="rMarket" aria-label="Market"></select>
+    <div class="seg two" id="rView"><button type="button" data-v="report">Report</button><button type="button" data-v="clients">Clients</button></div>
+  </div>
+  <p class="note warn" id="rArriving" hidden></p>
+  <div class="tiles" id="rTiles"></div>
+  <div class="mix" id="rMix"></div>
+  <div class="legend" id="rLegend"></div>
+  <div id="rBody"><p class="note">Opening the report…</p></div>
+  <p class="foot" id="rFoot"></p>
+</div>
+<div id="detail" hidden></div>
+<div id="formView">
 <div id="preview">Preview outside Telegram. In the bot, open this form from the <b>Form</b> button under the text box.</div>
 <h1>Missed Ads report</h1>
 
@@ -89,13 +154,16 @@ select{appearance:auto}
 <p id="status" hidden></p>
 <button type="button" id="go">Show report</button>
 <p class="foot" id="foot"></p>
+</div>
 
 <script>
-(function () {
+(function () {  // the form
   "use strict";
+  if (/^#R/.test(location.hash)) return;  // a report link: the script below shows it
   var tg = window.Telegram && window.Telegram.WebApp;
   var inTelegram = !!(tg && tg.platform && tg.platform !== "unknown");
-  var fromKeyboard = inTelegram && !tg.initData;  // only the Form button under the text box can send; it opens with no initData
+  // Only the Form button under the text box can send; it opens with no signed user data in this launch's link.
+  var fromKeyboard = inTelegram && !/(?:^#|[?&])tgWebAppData=[^&]/.test(location.hash);
   var q = new URLSearchParams(location.search);
   var DAY = 864e5;
   var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -284,6 +352,294 @@ select{appearance:auto}
     + (inTelegram ? "Telegram " + tg.platform + " " + tg.version + (fromKeyboard ? ", opened from Form." : ", opened from a link.") : "");
   update();
   if (inTelegram && !fromKeyboard) say(NOT_FROM_BUTTON, true);
+})();
+</script>
+
+<script>
+(function () {  // the report, from the link's #R part
+  "use strict";
+  var packed = location.hash.replace(/^#/, "").split(/[?&#]/)[0];  // Telegram adds its own parameters after it
+  if (packed.charAt(0) !== "R") return;
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var inTelegram = !!(tg && tg.platform && tg.platform !== "unknown");
+  var $ = function (id) { return document.getElementById(id); };
+  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var PCC_ORDER = ["FP", "BP", "RD", "P3", "P5", "Others"];
+  var LANGUAGE_COLOURS = ["#2481cc", "#e67e22", "#16a085", "#8e44ad", "#c0392b", "#7f8c8d"];
+  var TOP = 10;  // clients per language before "Show all"
+
+  $("formView").hidden = true;
+  $("reportView").hidden = false;
+  if (inTelegram) {
+    document.documentElement.setAttribute("data-tg", "");
+    tg.ready();
+    tg.expand();
+    tg.MainButton.hide();
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function fmt(v) { return (v >= 0.1 || v === 0 ? v.toFixed(1) : v.toFixed(2)) + "K"; }
+  function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
+  var ACRONYMS = { BFSI: 1, FMCG: 1, OTC: 1, IT: 1, TV: 1, NGO: 1, PSU: 1 };
+  function nice(s) {  // 'CONS.DURABLES' -> 'Cons.Durables', 'BFSI' stays
+    return (s || "-").replace(/[A-Za-z]+/g, function (w) { return ACRONYMS[w.toUpperCase()] ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); });
+  }
+  function longDate(s) { var p = s.split("-"), d = new Date(+p[0], p[1] - 1, +p[2]); return WEEKDAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear(); }
+  function haptic() { try { tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged(); } catch (e) {} }
+  function fail(text) { var body = $("rBody"); body.textContent = ""; body.appendChild(el("p", "note warn", text)); }
+
+  function decode(b64) {  // base64url -> zlib -> JSON
+    var s = b64.replace(/-/g, "+").replace(/_/g, "/");
+    while (s.length % 4) s += "=";
+    var bin = atob(s), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate"));
+    return new Response(stream).text().then(JSON.parse);
+  }
+
+  // The data (see page_report in bot.py): r[market] = sections [language, BCCL title, competitors, volume,
+  // [editions in, this month], clients]; client [name, vertical, branch, volume, publications, exact volume];
+  // publication [name, volume, editions, [[PCC, volume]], editions]; edition [name, volume, [PCC groups]].
+  var data, state = { market: "All", view: "report", query: "", open: {} }, scrollBack = 0;
+
+  function sections(market) { return (data.r[market] || []).filter(function (s) { return s[5].length; }); }
+  function groups(market) {  // each client once, across languages, largest first
+    var byName = {}, list = [];
+    sections(market).forEach(function (s) {
+      s[5].forEach(function (c) {
+        var g = byName[c[0]];
+        if (!g) { g = byName[c[0]] = { name: c[0], exact: 0, parts: [] }; list.push(g); }
+        g.exact += c[5] != null ? c[5] : c[3];
+        g.parts.push({ s: s, c: c });
+      });
+    });
+    list.forEach(function (g) {
+      g.parts.sort(function (a, b) { return b.c[3] - a.c[3]; });
+      g.vertical = g.parts[0].c[1];
+      g.branch = g.parts[0].c[2];
+      g.volume = g.parts.length === 1 ? g.parts[0].c[3] : g.exact;  // one language: as the chat rounds it; several: their exact sum
+    });
+    return list.sort(function (a, b) { return b.exact - a.exact || (a.name < b.name ? -1 : 1); });
+  }
+  function pccOf(pubs) {  // a client's PCC groups across its publications, in page order
+    var seen = {};
+    pubs.forEach(function (p) { p[3].forEach(function (g) { seen[g[0]] = (seen[g[0]] || 0) + g[1]; }); });
+    return PCC_ORDER.filter(function (g) { return seen[g] != null; }).map(function (g) { return [g, seen[g]]; });
+  }
+  function chips(list, withVolume) {
+    var box = el("span", "pcs");
+    list.forEach(function (g) { box.appendChild(el("em", "pc " + g[0], withVolume ? g[0] + " " + fmt(g[1]) : g[0])); });
+    return box;
+  }
+  function bar(share) { var b = el("span", "bar"), i = el("i"); i.style.width = Math.max(3, Math.round(100 * share)) + "%"; b.appendChild(i); return b; }
+
+  function clientRow(name, rank, meta, volume, max, pubs, pubText) {
+    var b = el("button", "row" + (rank ? "" : " nork"));
+    b.type = "button";
+    if (rank) b.appendChild(el("span", "rk", String(rank)));
+    var mid = el("span", "mid");
+    mid.appendChild(el("span", "nm", name));
+    mid.appendChild(el("span", "meta", meta));
+    mid.appendChild(bar(volume / max));
+    if (pubText) mid.appendChild(el("span", "pubs", pubText));
+    b.appendChild(mid);
+    var right = el("span", "rt");
+    right.appendChild(el("span", "v", fmt(volume)));
+    right.appendChild(chips(pccOf(pubs), false));
+    b.appendChild(right);
+    b.onclick = function () { haptic(); openDetail(name); };
+    return b;
+  }
+
+  function render() {
+    var secs = sections(state.market), list = groups(state.market);
+    var total = secs.reduce(function (t, s) { return t + s[3]; }, 0);  // for the mix bar; the tile shows the bot's own total
+    var shownTotal = data.t && data.t[state.market] != null ? data.t[state.market] : total;
+    Array.prototype.forEach.call($("rView").children, function (b) { b.classList.toggle("on", b.dataset.v === state.view); });
+    var tiles = $("rTiles");
+    tiles.textContent = "";
+    [[String(list.length), list.length === 1 ? "client" : "clients"], [fmt(shownTotal), "SCM in competition"], [String(secs.length), secs.length === 1 ? "language" : "languages"]]
+      .forEach(function (t) { var d = el("div", "tile"); d.appendChild(el("b", null, t[0])); d.appendChild(el("span", null, t[1])); tiles.appendChild(d); });
+    var mix = $("rMix"), legend = $("rLegend");
+    mix.textContent = ""; legend.textContent = "";
+    secs.forEach(function (s, i) {
+      var part = el("i");
+      part.style.width = (100 * s[3] / total) + "%";
+      part.style.background = LANGUAGE_COLOURS[i % LANGUAGE_COLOURS.length];
+      mix.appendChild(part);
+      var key = el("span"), dot = el("i");
+      dot.style.background = part.style.background;
+      key.appendChild(dot);
+      key.appendChild(document.createTextNode(s[0] + " " + fmt(s[3]) + " · " + s[5].length));
+      legend.appendChild(key);
+    });
+    mix.hidden = legend.hidden = !secs.length;
+    var body = $("rBody");
+    body.textContent = "";
+    if (!list.length) {
+      body.appendChild(el("p", "note", "No clients above " + data.min + "K SCM missed BCCL in " + (state.market === "All" ? "any market" : state.market) + " that day."));
+    } else if (state.view === "report") {
+      renderReport(body, secs);
+    } else {
+      renderClients(body, list);
+    }
+    var editions = (data.r[state.market] || []).map(function (s) { return s[0] + " " + s[4][0] + "/" + s[4][1]; }).join(", ");
+    var missing = data.mk.some(function (m) { return !data.r[m[0]]; });
+    $("rFoot").textContent = "Data read " + data.at + ". Competitor main editions with data: " + editions + "."
+      + (missing ? " Markets marked “from Form” didn't fit in this link: pick them in the Form." : "");
+  }
+
+  function renderReport(body, secs) {
+    secs.forEach(function (s) {
+      var card = el("section", "card"), head = el("div", "lh");
+      head.appendChild(el("b", null, s[0]));
+      head.appendChild(el("span", null, plural(s[5].length, "client") + " · " + fmt(s[3])));
+      card.appendChild(head);
+      card.appendChild(el("p", "vs", s[1] + " (" + data.p + ") vs " + s[2].replace(/ - /g, ", ")));
+      var max = Math.max.apply(null, s[5].map(function (c) { return c[3]; }));
+      var shown = state.open[s[0]] ? s[5] : s[5].slice(0, TOP);
+      shown.forEach(function (c, i) {
+        card.appendChild(clientRow(c[0], i + 1, nice(c[1]) + " · " + c[2], c[3], max, c[4],
+          c[4].map(function (p) { return p[0] + " " + fmt(p[1]) + " (" + plural(p[2], "edition") + ")"; }).join(" · ")));
+      });
+      if (s[5].length > TOP) {
+        var more = el("button", "more", state.open[s[0]] ? "Show the top " + TOP : "Show all " + s[5].length);
+        more.type = "button";
+        more.onclick = function () { state.open[s[0]] = !state.open[s[0]]; haptic(); render(); };
+        card.appendChild(more);
+      }
+      body.appendChild(card);
+    });
+  }
+
+  function renderClients(body, list) {
+    var input = el("input");
+    input.type = "text";
+    input.placeholder = "Find a client, e.g. honda";
+    input.value = state.query;
+    input.setAttribute("aria-label", "Find a client");
+    body.appendChild(input);
+    var count = el("p", "count"), box = el("div", "card");
+    body.appendChild(count);
+    body.appendChild(box);
+    var max = list[0].volume;
+    function fill() {
+      var words = state.query.toLowerCase().split(/\s+/).filter(Boolean);
+      var hits = list.filter(function (g) { return words.every(function (w) { return g.name.toLowerCase().indexOf(w) >= 0; }); });
+      count.textContent = words.length ? plural(hits.length, "client") + " match" + (hits.length === 1 ? "es" : "") : plural(list.length, "client") + ", largest first. Tap one for its editions.";
+      box.textContent = "";
+      box.hidden = !hits.length;
+      hits.forEach(function (g) {
+        var pubs = [];
+        g.parts.forEach(function (x) { pubs = pubs.concat(x.c[4]); });
+        box.appendChild(clientRow(g.name, 0, nice(g.vertical) + " · " + g.branch + " · " + g.parts.map(function (x) { return x.s[0]; }).join(", "), g.volume, max, pubs, ""));
+      });
+    }
+    input.oninput = function () { state.query = input.value; fill(); };
+    fill();
+  }
+
+  function openDetail(name) {
+    var g = groups(state.market).filter(function (x) { return x.name === name; })[0];
+    if (!g) return;
+    var d = $("detail");
+    d.textContent = "";
+    if (!inTelegram) {
+      var back = el("button", "backbtn", "‹ Back");
+      back.type = "button";
+      back.onclick = closeDetail;
+      d.appendChild(back);
+    }
+    d.appendChild(el("h2", null, g.name));
+    d.appendChild(el("p", "dmeta", nice(g.vertical) + " · " + g.branch + (state.market === "All" ? "" : " · " + state.market + " market")));
+    var big = el("p", "big");
+    big.appendChild(el("b", null, fmt(g.volume) + " SCM"));
+    big.appendChild(document.createTextNode(" in competition on " + longDate(data.d)));
+    d.appendChild(big);
+    g.parts.forEach(function (x) {
+      var s = x.s, c = x.c, card = el("section", "card"), head = el("div", "lh");
+      head.appendChild(el("b", null, s[0]));
+      head.appendChild(el("span", null, fmt(c[3])));
+      card.appendChild(head);
+      card.appendChild(el("p", "vs", s[1] + " (" + data.p + ") vs " + s[2].replace(/ - /g, ", ")));
+      c[4].forEach(function (p) {
+        var pub = el("div", "pub"), ph = el("div", "pubh");
+        var title = el("span");
+        title.appendChild(el("b", null, p[0]));
+        title.appendChild(document.createTextNode(" " + fmt(p[1]) + " · " + plural(p[2], "edition")));
+        ph.appendChild(title);
+        ph.appendChild(chips(p[3], p[3].length > 1));
+        pub.appendChild(ph);
+        if (p[4].length) {
+          p[4].forEach(function (e) {
+            var row = el("div", "ed");
+            row.appendChild(el("span", null, e[0]));
+            row.appendChild(el("span", "v", fmt(e[1])));
+            row.appendChild(chips(e[2].map(function (x) { return [x]; }), false));
+            pub.appendChild(row);
+          });
+        } else {
+          pub.appendChild(el("p", "vs", "The editions didn't fit in this link: use Show in chat under the card."));
+        }
+        card.appendChild(pub);
+      });
+      d.appendChild(card);
+    });
+    scrollBack = window.scrollY;
+    $("reportView").hidden = true;
+    d.hidden = false;
+    window.scrollTo(0, 0);
+    if (inTelegram) tg.BackButton.show();
+  }
+
+  function closeDetail() {
+    $("detail").hidden = true;
+    $("reportView").hidden = false;
+    window.scrollTo(0, scrollBack);
+    if (inTelegram) tg.BackButton.hide();
+  }
+
+  function start(d) {
+    data = d;
+    state.market = data.r[data.m] ? data.m : "All";
+    state.view = data.w === "clients" ? "clients" : "report";
+    $("rTitle").textContent = "Missed Ads · " + longDate(data.d);
+    $("rSub").textContent = "Clients in competition that day, not in BCCL " + data.p + ", above " + data.min + "K SCM.";
+    var select = $("rMarket"), all = groups("All").length;
+    [["All", "All markets · " + all]].concat(data.mk.map(function (m) {
+      return [m[0], m[0] + " · " + m[1] + " · " + fmt(m[2]) + (data.r[m[0]] ? "" : " (from Form)")];
+    })).forEach(function (o) {
+      var opt = el("option", null, o[1]);
+      opt.value = o[0];
+      opt.disabled = !data.r[o[0]];
+      select.appendChild(opt);
+    });
+    select.value = state.market;
+    select.onchange = function () { state.market = select.value; state.query = ""; state.open = {}; haptic(); render(); window.scrollTo(0, 0); };
+    Array.prototype.forEach.call($("rView").children, function (b) {
+      b.onclick = function () { state.view = b.dataset.v; haptic(); render(); };
+    });
+    if (data.ar) {
+      $("rArriving").textContent = "Still arriving: about " + data.ar[0] + " of the usual " + data.ar[1] + " competitor main editions are in, so more clients may appear later.";
+      $("rArriving").hidden = false;
+    }
+    if (inTelegram) tg.BackButton.onClick(closeDetail);
+    render();
+  }
+
+  if (!window.DecompressionStream) {
+    fail("This version of Telegram can't open the report page. Update Telegram, or use Show in chat under the card.");
+    return;
+  }
+  Promise.resolve().then(function () { return decode(packed.slice(1)); }).then(start).catch(function (e) {  // e.g. a cut-off link
+    fail("The report in this link couldn't be read (" + (e && e.message) + "). Use Show in chat under the card.");
+  });
 })();
 </script>
 </body>
