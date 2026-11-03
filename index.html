@@ -9,8 +9,9 @@
 <!--
   The Missed Ad Report Bot's Report page (a Telegram Mini App), opened from Report, left of the bot's text box.
   It never contacts any server and holds no data of its own: the bot puts the last few days' reports (All and each
-  market, with each client's editions) as compressed JSON in the part of the button's link after #R, which stays in
-  the phone (the web host never receives it). The bot renews that link after each background read.
+  market, with each client's editions and its missed days over 14 days) as compressed JSON in the part of the button's
+  link after #R, which stays in the phone (the web host never receives it). The bot renews that link after each
+  background read. Everything below (grouping, filters, lenses, client detail) is worked out in the phone.
 -->
 <script>try { sessionStorage.removeItem("__telegram__initParams"); } catch (e) {}  // Telegram's script would reuse an earlier launch's</script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -18,91 +19,96 @@
 :root{
   --bg:var(--tg-theme-secondary-bg-color,#efeff4);--card:var(--tg-theme-section-bg-color,var(--tg-theme-bg-color,#fff));
   --ink:var(--tg-theme-text-color,#1f1e1b);--mut:var(--tg-theme-hint-color,#7d7d85);--acc:var(--tg-theme-button-color,#2481cc);
-  --acc-ink:var(--tg-theme-button-text-color,#fff);--line:var(--tg-theme-section-separator-color,rgba(128,128,128,.25));
-  --link:var(--tg-theme-link-color,var(--acc));--warn:#b25e09;
+  --acc-ink:var(--tg-theme-button-text-color,#fff);--line:var(--tg-theme-section-separator-color,rgba(128,128,128,.22));
+  --link:var(--tg-theme-link-color,var(--acc));--acc-bg:rgba(36,129,204,.12);--warn:#b25e09;--up:#c0392b;--down:#1e8449;
 }
-@media (prefers-color-scheme: dark){:root:not([data-tg]){--bg:#1b1b1d;--card:#2a2a2e;--ink:#ececee;--mut:#9b9ba3;--acc:#5aa7e8;--acc-ink:#0d1b28;--warn:#f0a03a}}
+@media (prefers-color-scheme: dark){:root:not([data-tg]){--bg:#1b1b1d;--card:#2a2a2e;--ink:#ececee;--mut:#9b9ba3;--acc:#5aa7e8;--acc-ink:#0d1b28;--acc-bg:rgba(90,167,232,.16);--warn:#f0a03a;--up:#ef7b6e;--down:#6fcf97}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
-body{margin:0 auto;max-width:760px;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:12px 16px calc(24px + env(safe-area-inset-bottom))}
-h1{font-size:17px;font-weight:600;margin:4px 4px 12px}
-input[type=text],select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
-select{appearance:auto}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
-.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
-.chip small{color:var(--mut);font-size:12px;margin-left:4px}
-.chip.on{border-color:var(--acc);background:var(--acc);color:var(--acc-ink);font-weight:600}
-.chip.on small{color:var(--acc-ink);opacity:.85}
-.seg{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.seg button{border:0;border-right:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14px;padding:9px 4px;cursor:pointer}
-.seg button:last-child{border-right:0}
+body{margin:0 auto;max-width:760px;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:10px 12px calc(24px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit}
+.top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pill{flex:1;display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-weight:600;cursor:pointer;min-width:0}
+.pill > span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pill > span:last-child{flex:none;margin-left:6px}
+.pill small{font-weight:400;color:var(--mut);margin-left:6px}
+.icon{background:var(--card);border:1px solid var(--line);border-radius:999px;width:38px;height:38px;font-size:16px;cursor:pointer;flex:none}
+.bar2{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.crumbs{width:100%;font-size:12.5px;color:var(--mut);display:flex;flex-wrap:wrap;gap:2px}
+.crumbs button{background:none;border:0;padding:0;color:var(--link);cursor:pointer}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 10px;font-size:13px;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
+.chip.x{background:var(--acc-bg);border-color:transparent;color:var(--link);font-weight:600}
+.seg{display:inline-grid;grid-auto-flow:column;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-left:auto}
+.seg button{border:0;background:var(--card);font-size:13px;padding:6px 11px;cursor:pointer}
 .seg button.on{background:var(--acc);color:var(--acc-ink);font-weight:600}
-.foot{font-size:12px;color:var(--mut);margin:4px 4px 0}
-.rsub{font-size:13px;color:var(--mut);margin:-8px 4px 12px}
-.ctl{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px;margin-bottom:12px}
-.ctl select{padding:9px 6px}
-.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
-.tile{background:var(--card);border-radius:12px;padding:10px 12px;min-width:0}
-.tile b{display:block;font-size:22px;font-weight:700;line-height:1.2}
-.tile span{font-size:12px;color:var(--mut)}
-.mix{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:0 2px 6px;background:var(--line)}
-.mix i{display:block;height:100%}
-.legend{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:12px;color:var(--mut);margin:0 4px 12px}
-.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
-.card{background:var(--card);border-radius:12px;padding:12px 12px 4px;margin-bottom:12px}
-.lh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.lh b{font-size:16px}
-.lh span{font-size:13px;color:var(--mut);white-space:nowrap}
-.vs{font-size:12px;color:var(--mut);margin:2px 0 6px}
-.row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:8px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:9px 0;font:inherit;color:inherit;cursor:pointer}
-.row.nork{grid-template-columns:minmax(0,1fr) auto}
-.card > .row:first-child{border-top:0}
-.rk{font-size:12px;color:var(--mut);padding-top:2px}
-.mid{min-width:0;display:flex;flex-direction:column;gap:3px}
-.nm{font-size:14px;font-weight:600;overflow-wrap:anywhere}
-.meta,.pubs{font-size:12px;color:var(--mut)}
-.bar{display:block;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
-.bar i{display:block;height:100%;background:var(--acc);border-radius:3px}
-.rt{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-.v{font-size:14px;font-weight:700;white-space:nowrap}
-.pcs{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end}
-.pc{font-size:10.5px;font-weight:700;color:#fff;border-radius:4px;padding:1px 5px;font-style:normal;white-space:nowrap}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.tile{background:var(--card);border-radius:12px;padding:8px 10px;min-width:0}
+.tile b{display:block;font-size:19px;font-weight:700;line-height:1.2}
+.tile span{font-size:11.5px;color:var(--mut);display:block}
+.ch{font-size:11.5px;font-weight:600}
+.ch.up{color:var(--up)}.ch.down{color:var(--down)}
+.card{background:var(--card);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.ch2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.ch2 b{font-size:14.5px}
+.ch2 span{font-size:12px;color:var(--mut)}
+.lens{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.t5{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;width:100%;background:none;border:0;border-top:1px solid var(--line);padding:7px 0;text-align:left;cursor:pointer}
+.t5 .nm{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v{font-size:13.5px;font-weight:700;white-space:nowrap}
+.tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+.tag{font-size:10.5px;font-weight:700;border-radius:4px;padding:1px 5px;background:var(--acc-bg);color:var(--link)}
+.tag.new{background:rgba(192,57,43,.13);color:#c0392b}.tag.rep{background:rgba(178,94,9,.14);color:var(--warn)}
+.pc{font-size:10px;font-weight:700;color:#fff;border-radius:4px;padding:1px 5px;font-style:normal}
 .pc.FP{background:#c0392b}.pc.BP{background:#d35400}.pc.RD{background:#5d6d7e}.pc.P3{background:#138d75}.pc.P5{background:#2471a3}.pc.Others{background:#7f7f86}
-.more{display:block;width:100%;background:none;border:0;border-top:1px solid var(--line);color:var(--link);font:inherit;font-size:14px;padding:10px 0;cursor:pointer}
-.note{font-size:13px;color:var(--mut);margin:0 4px 12px}
+.pcs{display:flex;gap:3px;justify-content:flex-end;margin-top:3px;flex-wrap:wrap}
+.more{display:block;width:100%;background:none;border:0;border-top:1px solid var(--line);color:var(--link);font-size:13.5px;padding:8px 0 2px;text-align:left;cursor:pointer}
+.sbar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:4px 0 2px;cursor:pointer}
+.sbar i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:10.5px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap}
+.sbar i.dim{opacity:.25}
+.sbl{font-size:11.5px;color:var(--mut);margin-bottom:8px}
+.gb{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
+.gb::-webkit-scrollbar{display:none}
+.lbl{font-size:12px;color:var(--mut);margin:2px 2px 4px}
+.grp{display:block;width:100%;text-align:left;background:var(--card);border:0;border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.grp .h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.grp .h b{font-size:14.5px}
+.share{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin:5px 0}
+.share i{display:block;height:100%;background:var(--acc)}
+.sub{font-size:12px;color:var(--mut)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:8px 0;cursor:pointer}
+.card > .row:first-child{border-top:0}
+.row .nm{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.meta{font-size:12px;color:var(--mut)}
+input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.note{font-size:12.5px;color:var(--mut);margin:0 2px 8px}
 .note.warn{color:var(--warn)}
-.count{font-size:13px;color:var(--mut);margin:10px 4px 6px}
-.backbtn{background:none;border:0;color:var(--link);font:inherit;font-size:15px;padding:4px 0 8px;cursor:pointer}
-#detail h2{font-size:18px;margin:4px 4px 2px;overflow-wrap:anywhere}
-.dmeta{font-size:13px;color:var(--mut);margin:0 4px 4px}
-.big{font-size:15px;margin:0 4px 12px}
-.big b{font-size:20px}
-.pub{border-top:1px solid var(--line);padding:8px 0}
-.pubh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
-.pubh b{font-weight:600}
-.ed{display:grid;grid-template-columns:minmax(0,1fr) auto 76px;gap:8px;align-items:center;font-size:13px;padding:4px 0 0}
-.ed span:first-child{overflow-wrap:anywhere}
+.split{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;font-size:13px;padding:3px 0}
+.split .share{grid-column:1/-1;margin:0}
+.ed{display:grid;grid-template-columns:minmax(0,1fr) auto 70px;gap:8px;font-size:13px;padding:5px 0;border-top:1px solid var(--line);align-items:center}
+.link{display:block;background:none;border:0;padding:6px 0 2px;color:var(--link);font-size:13.5px;text-align:left;cursor:pointer}
+.dots{display:flex;gap:3px;margin-top:6px}
+.dots i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--warn)}
+.dots i.today{outline:2px solid var(--acc);outline-offset:1px}
+.foot{font-size:12px;color:var(--mut);margin:8px 2px 0}
+.backbtn{background:none;border:0;color:var(--link);font-size:15px;padding:0 6px 0 0;cursor:pointer;flex:none}
+.sheetbg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+.sheet{background:var(--bg);width:100%;max-width:760px;border-radius:16px 16px 0 0;padding:12px 12px calc(16px + env(safe-area-inset-bottom));max-height:82%;overflow:auto}
+.sheet h3{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin:8px 2px 6px;font-weight:600}
+.daygrid,.orggrid{display:grid;gap:6px}
+.daygrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.orggrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cell{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 8px;text-align:left;font-size:12.5px;cursor:pointer}
+.cell b{display:block;font-size:13.5px}
+.cell.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(20,20,22,.9);color:#fff;font-size:13px;padding:7px 12px;border-radius:8px;z-index:6;max-width:90%}
+.gonext{display:block;width:100%;margin-top:6px;background:var(--acc);color:var(--acc-ink);border:0;border-radius:10px;padding:11px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
-<div id="reportView">
-  <h1 id="rTitle">Missed Ads report</h1>
-  <p class="rsub" id="rSub"></p>
-  <div class="chips" id="rDays"></div>
-  <div class="ctl" id="rCtl">
-    <select id="rMarket" aria-label="Market"></select>
-    <div class="seg" id="rView"><button type="button" data-v="report">Report</button><button type="button" data-v="clients">Clients</button></div>
-  </div>
-  <p class="note warn" id="rArriving" hidden></p>
-  <p class="note warn" id="rMarketNote" hidden></p>
-  <div class="tiles" id="rTiles"></div>
-  <div class="mix" id="rMix"></div>
-  <div class="legend" id="rLegend"></div>
-  <div id="rBody"><p class="note">Opening the report…</p></div>
-  <p class="foot" id="rFoot"></p>
-</div>
-<div id="detail" hidden></div>
+<div id="app"><p class="note">Opening the report…</p></div>
 
 <script>
 (function () {
@@ -110,43 +116,36 @@ select{appearance:auto}
   var packed = location.hash.replace(/^#/, "").split(/[?&#]/)[0];  // the #R part; Telegram adds its own parameters after it
   var tg = window.Telegram && window.Telegram.WebApp;
   var inTelegram = !!(tg && tg.platform && tg.platform !== "unknown");
-  var nativeBack = inTelegram && typeof tg.isVersionAtLeast === "function" && tg.isVersionAtLeast("6.1");  // Telegram's Back button
+  function atLeast(v) { return inTelegram && typeof tg.isVersionAtLeast === "function" && tg.isVersionAtLeast(v); }
+  var nativeBack = atLeast("6.1"), nativeNext = atLeast("6.1");
   var $ = function (id) { return document.getElementById(id); };
-  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  var PCC_ORDER = ["FP", "BP", "RD", "P3", "P5", "Others"];
-  var LANGUAGE_COLOURS = ["#2481cc", "#e67e22", "#16a085", "#8e44ad", "#c0392b", "#7f8c8d"];
-  var TOP = 10;  // clients per language before "Show all"
+  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var PCC = ["FP", "BP", "RD", "P3", "P5", "Others"];
+  var PCC_COLOURS = { FP: "#c0392b", BP: "#d35400", RD: "#5d6d7e", P3: "#138d75", P5: "#2471a3", Others: "#7f7f86" };
+  var LANG_COLOURS = ["#2481cc", "#e67e22", "#16a085", "#8e44ad", "#c0392b"];
+  var DIMS = { org: "Sales org", lang: "Language", paper: "Paper", city: "City", edition: "Edition", pcc: "Page position", vertical: "Vertical" };
+  var GROUP_ORDER = ["lang", "org", "paper", "city", "edition", "pcc", "vertical"];
+  var NEXT = { org: "lang", lang: "paper", paper: "city", city: "pcc", edition: "pcc", vertical: "paper", pcc: null };  // after a tap, the next level
+  var ACRONYMS = { BFSI: 1, FMCG: 1, OTC: 1, IT: 1, TV: 1, NGO: 1, PSU: 1 };
 
   if (inTelegram) {
     document.documentElement.setAttribute("data-tg", "");
     tg.ready();
     tg.expand();
+    if (atLeast("7.7") && tg.disableVerticalSwipes) tg.disableVerticalSwipes();  // scrolling up doesn't close the page
     tg.MainButton.hide();
   }
 
-  function el(tag, cls, text) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
-    return e;
-  }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function fmt(v) { return (v >= 0.1 || v === 0 ? v.toFixed(1) : v.toFixed(2)) + "K"; }
-  function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
-  var ACRONYMS = { BFSI: 1, FMCG: 1, OTC: 1, IT: 1, TV: 1, NGO: 1, PSU: 1 };
-  function nice(s) {  // 'CONS.DURABLES' -> 'Cons.Durables', 'BFSI' stays
-    return (s || "-").replace(/[A-Za-z]+/g, function (w) { return ACRONYMS[w.toUpperCase()] ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); });
-  }
+  function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
+  function nice(s) { return (s || "-").replace(/[A-Za-z]+/g, function (w) { return ACRONYMS[w.toUpperCase()] ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }); }
   function dateOf(s) { var p = s.split("-"); return new Date(+p[0], p[1] - 1, +p[2]); }
+  function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   function shortDate(s) { var d = dateOf(s); return WEEKDAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()]; }
-  function longDate(s) { return shortDate(s) + " " + dateOf(s).getFullYear(); }
+  function short(name, n) { return name.length > n ? name.slice(0, n - 1) + "…" : name; }
   function haptic() { try { tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged(); } catch (e) {} }
-  function fail(text) {
-    ["rDays", "rCtl", "rTiles", "rMix", "rLegend"].forEach(function (id) { $(id).hidden = true; });
-    var body = $("rBody");
-    body.textContent = "";
-    body.appendChild(el("p", "note warn", text));
-  }
+  function fail(text) { var app = $("app"); app.textContent = ""; app.appendChild(el("p", "note warn", text)); }
 
   function decode(b64) {  // base64url -> zlib -> JSON
     var s = b64.replace(/-/g, "+").replace(/_/g, "/");
@@ -157,292 +156,555 @@ select{appearance:auto}
     return new Response(stream).text().then(JSON.parse);
   }
 
-  // The data (see report_link and page_report in bot.py): days[] each {d, p (BCCL period), ar ([editions in, usual]
-  // while arriving), nd (no data yet), at (read time), mk ([[market, clients, volume]]), t ({market: total}),
-  // r ({market: sections})}; a section is [language, BCCL title, competitors, volume, [editions in, this month], clients];
-  // a client [name, vertical, branch, volume, publications, exact volume]; a publication [name, volume, editions,
-  // [[PCC, volume]], editions]; an edition [name, volume, [PCC groups]]. A one-day link from a report card (v 1) has d, r... itself.
-  var data, state = { day: null, market: "All", wanted: "All", view: "report", query: "", open: {} }, scrollBack = 0;  // wanted: the market picked, shown on days that have it
-
+  // The data (report_link and page_report in bot.py): w [window start, days] for the missed-days masks; days[] each
+  // {d, p (BCCL period), ar ([editions in, usual] while arriving), nd (no data yet), at (read time), mk ([[market, clients,
+  // volume]]), t ({market: total}), r ({market: sections})}. A section is [language, BCCL title, competitors, volume,
+  // [editions in, this month], clients]; a client [name, vertical, branch, volume, publications, exact volume, mask (All only)];
+  // a publication [name, volume, editions, [[PCC, volume]], editions]; an edition [name, volume, [PCC groups]].
+  var RAW;
   function normalise(d) {
-    if (d.v === 1) {
-      return { min: d.min, first: d.d, u: d.m, view: d.w,
+    if (d.v === 1) {  // a one-day link from an older report card
+      return { min: d.min, first: d.d, u: d.m, view: d.w, w: null,
                days: [{ d: d.d, p: d.p, ar: d.ar, nd: false, at: d.at, mk: d.mk, t: d.t || {}, r: d.r }] };
     }
     return d;
   }
-  function today() { return data.days.filter(function (x) { return x.d === state.day; })[0] || data.days[0]; }
-  function sections(market) { return (today().r[market] || []).filter(function (s) { return s[5].length; }); }
-  function groups(market) {  // each client once, across languages, largest first
-    var byName = {}, list = [];
-    sections(market).forEach(function (s) {
+  function dayOf(d) { return RAW.days.filter(function (x) { return x.d === d; })[0]; }
+  function dataDays() { return RAW.days.filter(function (x) { return !x.nd; }); }
+  function previousDay(d) { var days = dataDays(), i = days.map(function (x) { return x.d; }).indexOf(d); return i >= 0 && i + 1 < days.length ? days[i + 1].d : null; }
+
+  // City from an edition label: main editions are city names; supplements contain one ('Saptarang-Pune (Colour Pullouts)').
+  var cities = {}, cityWords = [];
+  function learnCities() {
+    RAW.days.forEach(function (day) { Object.keys(day.r).forEach(function (m) { day.r[m].forEach(function (s) { s[5].forEach(function (c) { c[4].forEach(function (p) { p[4].forEach(function (e) { if (e[0].indexOf("(") < 0) cities[e[0].toLowerCase()] = e[0]; }); }); }); }); }); });
+    cityWords = Object.keys(cities).sort(function (a, b) { return b.length - a.length; });
+  }
+  function cityOf(label) {
+    if (label.indexOf("(") < 0) return label;
+    var low = label.toLowerCase();
+    for (var i = 0; i < cityWords.length; i++) if (low.indexOf(cityWords[i]) >= 0) return cities[cityWords[i]];
+    return "Other";
+  }
+
+  // Missed days over the 14-day window: bit n = window start + n days, from the All report of any day.
+  var MASKS = {};
+  function learnMasks() {
+    RAW.days.forEach(function (day) { (day.r.All || []).forEach(function (s) { s[5].forEach(function (c) { if (c[6] != null) MASKS[c[0]] = MASKS[c[0]] | c[6]; }); }); });
+  }
+  function windowDays() { if (!RAW.w) return []; var start = dateOf(RAW.w[0]), out = []; for (var n = 0; n < RAW.w[1]; n++) out.push(iso(new Date(start.getFullYear(), start.getMonth(), start.getDate() + n))); return out; }
+  function history(name, d) {  // {missed: days missed up to d in the window, before: days missed before d, n: window length} or null
+    var w = windowDays(), mask = MASKS[name];
+    if (!w.length || mask == null || w.indexOf(d) < 0) return null;
+    var missed = 0, before = 0;
+    w.forEach(function (x, n) { if (x <= d && mask & (1 << n)) { missed++; if (x < d) before++; } });
+    return { missed: missed, before: before, n: w.length };
+  }
+  function repeatTag(name, d) {  // ["Repeat 8/14" | "New", class] from the 14 days, else from the previous day in the link
+    var h = history(name, d);
+    if (h) return h.before ? ["Repeat " + h.missed + "/" + h.n, "rep"] : ["New", "new"];
+    var prev = previousDay(d);
+    if (!prev) return null;
+    return facts(prev).clients[name] ? ["Repeat", "rep"] : ["New", "new"];
+  }
+
+  // Fact rows per day and market report (All, or one sales org's own report, so its numbers match the chat).
+  var FACTS = {};
+  function base(d, market) {
+    var key = d + "|" + market;
+    if (FACTS[key] !== undefined) return FACTS[key];
+    var day = dayOf(d), pub = [], ed = [], clients = {};
+    if (!day || !day.r[market]) return (FACTS[key] = null);
+    day.r[market].forEach(function (s) {
       s[5].forEach(function (c) {
-        var g = byName[c[0]];
-        if (!g) { g = byName[c[0]] = { name: c[0], exact: 0, parts: [] }; list.push(g); }
-        g.exact += c[5] != null ? c[5] : c[3];
-        g.parts.push({ s: s, c: c });
+        var name = c[0], org = market === "All" ? c[2] : market;
+        clients[name] = clients[name] || { name: c[0], vertical: c[1], org: c[2], langs: [] };
+        clients[name].langs.push(s[0]);
+        c[4].forEach(function (p) {
+          p[3].forEach(function (g) { pub.push({ client: name, lang: s[0], vertical: c[1], org: org, paper: p[0], pcc: g[0], v: g[1] }); });
+          p[4].forEach(function (e) { ed.push({ client: name, lang: s[0], vertical: c[1], org: org, paper: p[0], edition: p[0] + " · " + e[0], city: cityOf(e[0]), pccs: e[2], v: e[1], label: e[0] }); });
+        });
       });
     });
-    list.forEach(function (g) {
-      g.parts.sort(function (a, b) { return b.c[3] - a.c[3]; });
-      g.vertical = g.parts[0].c[1];
-      g.branch = g.parts[0].c[2];
-      g.volume = g.parts.length === 1 ? g.parts[0].c[3] : g.exact;  // one language: as the chat rounds it; several: their exact sum
+    return (FACTS[key] = { pub: pub, ed: ed, clients: clients });
+  }
+  function facts(d) { return base(d, "All") || { pub: [], ed: [], clients: {} }; }
+
+  var S = { day: null, stack: [], home: "[]", groupBy: "lang", view: "explore", lens: "big", premium: false, threshold: 0, sort: "scm", query: "", detail: null, sheet: false, views: [] };
+
+  function filters() { var f = {}; S.stack.forEach(function (x) { (f[x.dim] = f[x.dim] || []).push(x.value); }); return f; }
+  function rowPasses(r, f, skips) {
+    for (var dim in f) {
+      if (skips.indexOf(dim) >= 0) continue;
+      if (dim === "pcc") { if (r.pcc != null ? f.pcc.indexOf(r.pcc) < 0 : !r.pccs.some(function (g) { return f.pcc.indexOf(g) >= 0; })) return false; }
+      else if (r[dim] === undefined) continue;
+      else if (f[dim].indexOf(r[dim]) < 0) return false;
+    }
+    return true;
+  }
+  // Rows of the current slice: edition rows when city/edition is involved, else publication x PCC rows. The sales-org
+  // filter reads that market's own report(s); `only` forces one market (for the Sales org cards).
+  function slice(d, skip, forceEd, only) {
+    var f = filters(), useEd = forceEd || !!(f.city || f.edition);
+    var markets = only ? [only] : f.org && skip !== "org" ? f.org : ["All"], rows = [];
+    markets.forEach(function (m) {
+      var F = base(d, m);
+      if (F) rows = rows.concat((useEd ? F.ed : F.pub).filter(function (r) { return rowPasses(r, f, ["org", skip]); }));
     });
-    return list.sort(function (a, b) { return b.exact - a.exact || (a.name < b.name ? -1 : 1); });
+    if (S.premium) rows = rows.filter(function (r) { return r.pcc != null ? (r.pcc === "FP" || r.pcc === "BP") : r.pccs.some(function (g) { return g === "FP" || g === "BP"; }); });
+    if (S.threshold) {
+      var by = {}; rows.forEach(function (r) { by[r.client] = (by[r.client] || 0) + r.v; });
+      rows = rows.filter(function (r) { return by[r.client] >= S.threshold; });
+    }
+    return rows;
   }
-  function pccOf(pubs) {  // a client's PCC groups across its publications, in page order
-    var seen = {};
-    pubs.forEach(function (p) { p[3].forEach(function (g) { seen[g[0]] = (seen[g[0]] || 0) + g[1]; }); });
-    return PCC_ORDER.filter(function (g) { return seen[g] != null; }).map(function (g) { return [g, seen[g]]; });
-  }
-  function chips(list, withVolume) {
-    var box = el("span", "pcs");
-    list.forEach(function (g) { box.appendChild(el("em", "pc " + g[0], withVolume ? g[0] + " " + fmt(g[1]) : g[0])); });
-    return box;
-  }
-  function bar(share) { var b = el("span", "bar"), i = el("i"); i.style.width = Math.max(3, Math.round(100 * share)) + "%"; b.appendChild(i); return b; }
-
-  function clientRow(name, rank, meta, volume, max, pubs, pubText) {
-    var b = el("button", "row" + (rank ? "" : " nork"));
-    b.type = "button";
-    if (rank) b.appendChild(el("span", "rk", String(rank)));
-    var mid = el("span", "mid");
-    mid.appendChild(el("span", "nm", name));
-    mid.appendChild(el("span", "meta", meta));
-    mid.appendChild(bar(volume / max));
-    if (pubText) mid.appendChild(el("span", "pubs", pubText));
-    b.appendChild(mid);
-    var right = el("span", "rt");
-    right.appendChild(el("span", "v", fmt(volume)));
-    right.appendChild(chips(pccOf(pubs), false));
-    b.appendChild(right);
-    b.onclick = function () { haptic(); openDetail(name); };
-    return b;
-  }
-
-  function renderDays() {
-    var box = $("rDays");
-    box.textContent = "";
-    box.hidden = data.days.length < 2;
-    data.days.forEach(function (x) {
-      var b = el("button", "chip" + (x.d === state.day ? " on" : ""), shortDate(x.d));
-      b.type = "button";
-      b.appendChild(el("small", null, x.nd ? "no data" : x.ar ? "arriving" : "✓"));
-      b.onclick = function () {
-        if (state.day === x.d) return;
-        state.day = x.d; state.query = ""; state.open = {};
-        state.market = x.r[state.wanted] ? state.wanted : "All";
-        haptic(); render(); window.scrollTo(0, 0);
-      };
-      box.appendChild(b);
+  function clientTotals(rows, d) {
+    var F = facts(d), by = {}, list = [];
+    rows.forEach(function (r) {
+      var c = by[r.client];
+      if (!c) { c = by[r.client] = { name: r.client, v: 0, fpbp: 0, pcc: {}, papers: {}, info: F.clients[r.client] || { name: r.client, vertical: r.vertical, org: r.org, langs: [r.lang] } }; list.push(c); }
+      c.v += r.v;
+      (r.pcc != null ? [r.pcc] : r.pccs).forEach(function (g) { c.pcc[g] = 1; });
+      if (r.pcc === "FP" || r.pcc === "BP") c.fpbp += r.v;
+      c.papers[r.paper] = 1;
     });
+    return list;
+  }
+  function stats(d) {
+    var rows = slice(d), list = clientTotals(rows, d), f = filters(), pubRows = (f.city || f.edition) ? null : rows;
+    var fpbp = pubRows ? pubRows.filter(function (r) { return r.pcc === "FP" || r.pcc === "BP"; }).reduce(function (t, r) { return t + r.v; }, 0) : null;
+    var scm = rows.reduce(function (t, r) { return t + r.v; }, 0), t = dayOf(d).t || {};
+    var marketsOnly = !S.premium && !S.threshold && Object.keys(f).every(function (k) { return k === "org"; });
+    if (marketsOnly) scm = (f.org || ["All"]).reduce(function (s, m) { return s + (t[m] || 0); }, 0);  // the bot's exact totals, as in the chat
+    return { rows: rows, clients: list, scm: scm, fpbp: fpbp };
+  }
+  function allStats(d) { var F = facts(d); return { clients: Object.keys(F.clients).length, scm: (dayOf(d).t || {}).All || F.pub.reduce(function (t, r) { return t + r.v; }, 0) }; }
+
+  function change(now, before, isCount) {
+    if (before == null) return null;
+    var diff = now - before;
+    if (Math.abs(diff) < (isCount ? 1 : 0.05)) return el("span", "ch", "= prev day");
+    return el("span", "ch " + (diff > 0 ? "up" : "down"), (diff > 0 ? "▲" : "▼") + (isCount ? Math.abs(diff) : fmt(Math.abs(diff)).replace("K", "")) + " vs prev");
   }
 
-  function renderMarkets() {
-    var day = today(), select = $("rMarket");
-    select.textContent = "";
-    var all = day.r.All ? groups("All").length : 0;
-    [["All", "All markets · " + all]].concat(day.mk.map(function (m) {
-      return [m[0], m[0] + " · " + m[1] + " · " + fmt(m[2]) + (day.r[m[0]] ? "" : " (not included)")];
-    })).forEach(function (o) {
-      var opt = el("option", null, o[1]);
-      opt.value = o[0];
-      opt.disabled = !day.r[o[0]];
-      select.appendChild(opt);
-    });
-    select.value = state.market;
+  var toastTimer;
+  function toast(text) {
+    var old = document.querySelector(".toast"); if (old) old.remove();
+    var t = el("div", "toast", text); document.body.appendChild(t);
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.remove(); }, 1800);
+  }
+  function copy(text) {
+    var done = function () { toast("Copied: paste it into WhatsApp or mail"); };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+    function fallback() {
+      var a = el("textarea"); a.value = text; document.body.appendChild(a); a.select();
+      try { document.execCommand("copy"); done(); } catch (e) { toast("Couldn't copy here"); }
+      a.remove();
+    }
   }
 
+  // Saved views: the person's own, kept by Telegram (CloudStorage), or in this phone's browser outside Telegram.
+  var STORE_KEY = "views";
+  function loadViews(then) {
+    function parse(s) { try { return JSON.parse(s || "[]") || []; } catch (e) { return []; } }
+    if (atLeast("6.9") && tg.CloudStorage) { tg.CloudStorage.getItem(STORE_KEY, function (err, value) { S.views = err ? [] : parse(value); then(); }); return; }
+    try { S.views = parse(localStorage.getItem("mar_" + STORE_KEY)); } catch (e) { S.views = []; }
+    then();
+  }
+  function saveViews() {
+    var s = JSON.stringify(S.views.slice(0, 8));
+    if (atLeast("6.9") && tg.CloudStorage) tg.CloudStorage.setItem(STORE_KEY, s, function () {});
+    else try { localStorage.setItem("mar_" + STORE_KEY, s); } catch (e) {}
+  }
+  function viewName() {
+    var parts = S.stack.map(function (x) { return x.dim === "vertical" ? nice(x.value) : x.value; });
+    if (S.premium) parts.push("FP/BP");
+    if (S.threshold) parts.push("≥" + S.threshold + "K");
+    return parts.join(" ") || "All markets";
+  }
+
+  function push(dim, value, advance) {
+    haptic();
+    var exists = S.stack.some(function (x) { return x.dim === dim && x.value === value; });
+    if (exists) S.stack = S.stack.filter(function (x) { return !(x.dim === dim && x.value === value); });
+    else S.stack.push({ dim: dim, value: value });
+    if (advance && !exists) {
+      var f = filters(), next = NEXT[dim];
+      while (next && f[next]) next = NEXT[next];
+      if (next) S.groupBy = next; else S.view = "clients";
+    }
+    render(); window.scrollTo(0, 0);
+  }
+  // The opening view (the person's market) is home: Back steps back to it, and there Telegram shows Close instead.
+  function atHome() { return JSON.stringify(S.stack) === S.home; }
+  function canGoBack() { return !!(S.sheet || S.detail || S.view === "clients" || !atHome()); }
+  function back() {
+    if (S.sheet) S.sheet = false;
+    else if (S.detail) S.detail = null;
+    else if (S.view === "clients") S.view = "explore";
+    else if (S.stack.length && S.stack.length > JSON.parse(S.home).length) { var last = S.stack.pop(); S.groupBy = last.dim; }
+    else S.stack = JSON.parse(S.home);
+    haptic(); render();
+  }
+  function onMain() { if (S.detail && S.detail.next) { S.detail.name = S.detail.next; haptic(); render(); window.scrollTo(0, 0); } }
+
+  // ---------- rendering ----------
   function render() {
-    var day = today();
-    renderDays();
-    renderMarkets();
-    $("rTitle").textContent = "Missed Ads · " + longDate(day.d);
-    $("rSub").textContent = "Clients in competition that day, not in BCCL " + day.p + ", above " + data.min + "K SCM.";
-    $("rArriving").hidden = !day.ar;
-    if (day.ar) $("rArriving").textContent = "Still arriving: about " + day.ar[0] + " of the usual " + day.ar[1] + " competitor main editions are in, so more clients may appear later.";
-    var note = $("rMarketNote"), when = dateOf(day.d);  // the person's market isn't shown: say why
-    note.hidden = day.nd || state.wanted === "All" || state.market === state.wanted;
-    if (!note.hidden) {
-      note.textContent = day.mk.some(function (m) { return m[0] === state.wanted; })
-        ? state.wanted + " didn't fit in Report for " + shortDate(day.d) + ", so all markets are shown. Type " + when.getDate() + "-" + (when.getMonth() + 1) + " " + state.wanted + " in the chat for it."
-        : "No clients above " + data.min + "K SCM missed BCCL in " + state.wanted + " on " + shortDate(day.d) + ", so all markets are shown.";
+    var app = $("app");
+    app.textContent = "";
+    var old = document.querySelector(".sheetbg"); if (old) old.remove();
+    if (S.detail) renderDetail(app); else renderMain(app);
+    if (S.sheet) renderSheet();
+    if (nativeBack) { if (canGoBack()) tg.BackButton.show(); else tg.BackButton.hide(); }
+    if (nativeNext) {
+      if (S.detail && S.detail.next) { tg.MainButton.setText(S.detail.nextText); tg.MainButton.show(); }
+      else tg.MainButton.hide();
     }
-    var secs = sections(state.market), list = groups(state.market);
-    var total = secs.reduce(function (t, s) { return t + s[3]; }, 0);  // for the mix bar; the tile shows the bot's own total
-    var shownTotal = day.t && day.t[state.market] != null ? day.t[state.market] : total;
-    Array.prototype.forEach.call($("rView").children, function (b) { b.classList.toggle("on", b.dataset.v === state.view); });
-    var tiles = $("rTiles");
-    tiles.textContent = "";
-    tiles.hidden = day.nd;
-    [[String(list.length), list.length === 1 ? "client" : "clients"], [fmt(shownTotal), "SCM in competition"], [String(secs.length), secs.length === 1 ? "language" : "languages"]]
-      .forEach(function (t) { var d = el("div", "tile"); d.appendChild(el("b", null, t[0])); d.appendChild(el("span", null, t[1])); tiles.appendChild(d); });
-    var mix = $("rMix"), legend = $("rLegend");
-    mix.textContent = ""; legend.textContent = "";
-    secs.forEach(function (s, i) {
-      var part = el("i");
-      part.style.width = (100 * s[3] / total) + "%";
-      part.style.background = LANGUAGE_COLOURS[i % LANGUAGE_COLOURS.length];
-      mix.appendChild(part);
-      var key = el("span"), dot = el("i");
-      dot.style.background = part.style.background;
-      key.appendChild(dot);
-      key.appendChild(document.createTextNode(s[0] + " " + fmt(s[3]) + " · " + s[5].length));
-      legend.appendChild(key);
-    });
-    mix.hidden = legend.hidden = !secs.length;
-    var body = $("rBody");
-    body.textContent = "";
-    if (day.nd) {
-      body.appendChild(el("p", "note", "No competition data for " + longDate(day.d) + " yet. It usually comes in over the next few days."));
-    } else if (!list.length) {
-      body.appendChild(el("p", "note", "No clients above " + data.min + "K SCM missed BCCL in " + (state.market === "All" ? "any market" : state.market) + " that day."));
-    } else if (state.view === "report") {
-      renderReport(body, secs);
-    } else {
-      renderClients(body, list);
-    }
-    var editions = day.nd ? "" : (day.r[state.market] || []).map(function (s) { return s[0] + " " + s[4][0] + "/" + s[4][1]; }).join(", ");
-    var missing = day.mk.some(function (m) { return !day.r[m[0]]; });
-    $("rFoot").textContent = "Data read " + day.at + "." + (editions ? " Competitor main editions with data: " + editions + "." : "")
-      + (missing ? " Markets marked “not included” didn't fit: type the date and market in the chat, e.g. " + dateOf(day.d).getDate() + "-" + (dateOf(day.d).getMonth() + 1) + " DEL." : "")
-      + " Insights and older dates: /home in the chat.";
   }
 
-  function renderReport(body, secs) {
-    secs.forEach(function (s) {
-      var card = el("section", "card"), head = el("div", "lh");
-      head.appendChild(el("b", null, s[0]));
-      head.appendChild(el("span", null, plural(s[5].length, "client") + " · " + fmt(s[3])));
-      card.appendChild(head);
-      card.appendChild(el("p", "vs", s[1] + " (" + today().p + ") vs " + s[2].replace(/ - /g, ", ")));
-      var max = Math.max.apply(null, s[5].map(function (c) { return c[3]; }));
-      var shown = state.open[s[0]] ? s[5] : s[5].slice(0, TOP);
-      shown.forEach(function (c, i) {
-        card.appendChild(clientRow(c[0], i + 1, nice(c[1]) + " · " + c[2], c[3], max, c[4],
-          c[4].map(function (p) { return p[0] + " " + fmt(p[1]) + " (" + plural(p[2], "edition") + ")"; }).join(" · ")));
+  function header(app) {
+    var top = el("div", "top"), day = dayOf(S.day), f = filters();
+    if (!nativeBack && canGoBack()) { var bk = el("button", "backbtn", "‹"); bk.onclick = back; top.appendChild(bk); }
+    var pill = el("button", "pill"), left = el("span", null, (f.org ? f.org.join(", ") : "All markets") + " · " + shortDate(S.day));
+    left.appendChild(el("small", null, day.nd ? "no data" : day.ar ? "arriving" : "✓"));
+    pill.appendChild(left); pill.appendChild(el("span", null, "▾"));
+    pill.onclick = function () { S.sheet = true; haptic(); render(); };
+    top.appendChild(pill);
+    var star = el("button", "icon", "☆"); star.title = "Save this view";
+    star.onclick = function () {
+      var v = { name: viewName(), stack: S.stack.slice(), premium: S.premium, threshold: S.threshold, view: S.view, groupBy: S.groupBy };
+      S.views = [v].concat(S.views.filter(function (x) { return x.name !== v.name; })).slice(0, 8);
+      saveViews(); toast("Saved view: " + v.name + " (tap the pill to open it)");
+    };
+    var cp = el("button", "icon", "⧉"); cp.title = "Copy the summary";
+    cp.onclick = function () {
+      var st = stats(S.day), top3 = st.clients.slice().sort(function (a, b) { return b.v - a.v; }).slice(0, 3);
+      copy("Missed Ads " + shortDate(S.day) + " · " + viewName() + ": " + plural(st.clients.length, "client") + ", " + fmt(st.scm) + " SCM not in BCCL. Top: " + top3.map(function (c) { return c.name + " " + fmt(c.v); }).join(", ") + ".");
+    };
+    top.appendChild(star); top.appendChild(cp);
+    app.appendChild(top);
+
+    var bar = el("div", "bar2");
+    if (S.stack.length) {
+      var crumbs = el("div", "crumbs"), all = el("button", null, "All");
+      all.onclick = function () { S.stack = []; S.view = "explore"; haptic(); render(); };
+      crumbs.appendChild(all);
+      S.stack.forEach(function (x, i) {
+        crumbs.appendChild(document.createTextNode(" › "));
+        var b = el("button", null, x.dim === "vertical" ? nice(x.value) : x.value);
+        b.onclick = function () { S.stack = S.stack.slice(0, i + 1); S.view = "explore"; haptic(); render(); };
+        crumbs.appendChild(b);
       });
-      if (s[5].length > TOP) {
-        var more = el("button", "more", state.open[s[0]] ? "Show the top " + TOP : "Show all " + s[5].length);
-        more.type = "button";
-        more.onclick = function () { state.open[s[0]] = !state.open[s[0]]; haptic(); render(); };
-        card.appendChild(more);
-      }
-      body.appendChild(card);
-    });
+      app.appendChild(crumbs);
+      S.stack.forEach(function (x) { var c = el("button", "chip x", (x.dim === "vertical" ? nice(x.value) : x.value) + " ×"); c.onclick = function () { push(x.dim, x.value); }; bar.appendChild(c); });
+      var clear = el("button", "chip", "Clear"); clear.onclick = function () { S.stack = []; S.view = "explore"; haptic(); render(); }; bar.appendChild(clear);
+    }
+    var prem = el("button", "chip" + (S.premium ? " on" : ""), "FP/BP only"); prem.onclick = function () { S.premium = !S.premium; haptic(); render(); }; bar.appendChild(prem);
+    var th = el("button", "chip" + (S.threshold ? " on" : ""), S.threshold ? "≥" + S.threshold + "K" : "> " + RAW.min + "K");
+    th.title = "Tap for ≥2K, ≥5K, ≥10K"; th.onclick = function () { S.threshold = { 0: 2, 2: 5, 5: 10, 10: 0 }[S.threshold]; haptic(); render(); }; bar.appendChild(th);
+    var seg = el("div", "seg");
+    [["explore", "Explore"], ["clients", "Clients"]].forEach(function (o) { var b = el("button", S.view === o[0] ? "on" : "", o[1]); b.onclick = function () { S.view = o[0]; haptic(); render(); }; seg.appendChild(b); });
+    bar.appendChild(seg);
+    app.appendChild(bar);
   }
 
-  function renderClients(body, list) {
-    var input = el("input");
-    input.type = "text";
-    input.placeholder = "Find a client, e.g. honda";
-    input.value = state.query;
-    input.setAttribute("aria-label", "Find a client");
-    body.appendChild(input);
-    var count = el("p", "count"), box = el("div", "card");
-    body.appendChild(count);
-    body.appendChild(box);
-    var max = list[0].volume;
+  function tiles(app, st) {
+    var prev = previousDay(S.day), pst = prev ? stats(prev) : null, all = allStats(S.day), filtered = S.stack.length || S.premium || S.threshold;
+    var t = el("div", "tiles");
+    function tile(big, label, ch) { var d = el("div", "tile"); d.appendChild(el("b", null, big)); d.appendChild(el("span", null, label)); if (ch) d.appendChild(ch); t.appendChild(d); }
+    tile(String(st.clients.length), filtered ? "of " + all.clients + " clients" : "clients", pst ? change(st.clients.length, pst.clients.length, true) : null);
+    tile(fmt(st.scm), filtered ? "of " + fmt(all.scm) + " SCM" : "SCM in competition", pst ? change(st.scm, pst.scm) : null);
+    if (st.fpbp != null) tile(fmt(st.fpbp), "FP/BP · " + (st.scm ? Math.round(100 * st.fpbp / st.scm) : 0) + "%", null);
+    else tile(String(Object.keys(st.rows.reduce(function (o, r) { o[r.edition] = 1; return o; }, {})).length), "editions", null);
+    app.appendChild(t);
+  }
+
+  function lensList(st) {
+    var list = st.clients.slice();
+    if (S.lens === "fpbp") return list.filter(function (c) { return c.fpbp > 0; }).sort(function (a, b) { return b.fpbp - a.fpbp; });
+    list.sort(function (a, b) { return b.v - a.v; });
+    if (S.lens === "rep") list = list.filter(function (c) { var t = repeatTag(c.name, S.day); return t && t[1] === "rep"; });
+    if (S.lens === "new") list = list.filter(function (c) { var t = repeatTag(c.name, S.day); return t && t[1] === "new"; });
+    return list;
+  }
+
+  function tagsFor(c, withFpbp) {
+    var tags = el("div", "tags"), rt = repeatTag(c.name, S.day);
+    if (withFpbp && c.fpbp > 0) tags.appendChild(el("span", "tag", "FP/BP " + fmt(c.fpbp)));
+    if (rt) tags.appendChild(el("span", "tag " + rt[1], rt[0]));
+    if (c.info.langs.length > 1) tags.appendChild(el("span", "tag", c.info.langs.map(function (l) { return l.slice(0, 2); }).join("+")));
+    tags.appendChild(el("span", "tag", c.info.org));
+    return tags;
+  }
+
+  function top5(app, st) {
+    var card = el("div", "card"), h = el("div", "ch2");
+    h.appendChild(el("b", null, "Top 5 to act"));
+    h.appendChild(el("span", null, RAW.w ? "Repeat / New over 14 days" : previousDay(S.day) ? "Repeat / New vs " + shortDate(previousDay(S.day)) : ""));
+    card.appendChild(h);
+    var lens = el("div", "lens");
+    [["big", "Biggest"], ["fpbp", "FP/BP"], ["rep", "Repeat"], ["new", "New"]].forEach(function (o) { var b = el("button", "chip" + (S.lens === o[0] ? " on" : ""), o[1]); b.onclick = function () { S.lens = o[0]; haptic(); render(); }; lens.appendChild(b); });
+    card.appendChild(lens);
+    var list = lensList(st);
+    if (!list.length) card.appendChild(el("p", "note", "No clients for this lens here."));
+    list.slice(0, 5).forEach(function (c) {
+      var b = el("button", "t5"), left = el("span");
+      left.appendChild(el("div", "nm", c.name)); left.appendChild(tagsFor(c, true)); b.appendChild(left);
+      b.appendChild(el("span", "v", fmt(S.lens === "fpbp" ? c.fpbp : c.v)));
+      b.onclick = function () { openDetail(c.name, list.map(function (x) { return x.name; })); };
+      card.appendChild(b);
+    });
+    var more = el("button", "more", "All " + plural(st.clients.length, "client") + " ›"); more.onclick = function () { S.view = "clients"; haptic(); render(); window.scrollTo(0, 0); }; card.appendChild(more);
+    app.appendChild(card);
+  }
+
+  function stackedBar(app, dim, order, colours, label) {
+    var rows = slice(S.day, dim, dim !== "pcc" && !!(filters().city || filters().edition)), f = filters(), tot = {}, sum = 0;
+    rows.forEach(function (r) { var ks = dim === "pcc" && r.pcc == null ? r.pccs.slice(0, 1) : [r[dim]]; ks.forEach(function (k) { if (k == null) return; tot[k] = (tot[k] || 0) + r.v; sum += r.v; }); });
+    var keys = (order || Object.keys(tot).sort(function (a, b) { return tot[b] - tot[a]; })).filter(function (k) { return tot[k] > 0; });
+    if (!keys.length) return;
+    var bar = el("div", "sbar");
+    keys.forEach(function (k, i) {
+      var seg = el("i", f[dim] && f[dim].indexOf(k) < 0 ? "dim" : "", tot[k] / sum > 0.12 ? k + " " + fmt(tot[k]).replace("K", "") : "");
+      seg.style.width = (100 * tot[k] / sum) + "%";
+      seg.style.background = colours[k] || LANG_COLOURS[i % LANG_COLOURS.length];
+      seg.onclick = function () { push(dim, k); };
+      bar.appendChild(seg);
+    });
+    app.appendChild(bar);
+    app.appendChild(el("div", "sbl", label + ": " + keys.map(function (k) { return k + " " + fmt(tot[k]); }).join(" · ") + " · tap to filter"));
+  }
+
+  function renderMain(app) {
+    header(app);
+    var day = dayOf(S.day);
+    if (day.ar) app.appendChild(el("p", "note warn", "Still arriving: about " + day.ar[0] + " of the usual " + day.ar[1] + " competitor main editions are in, so more clients may appear later."));
+    if (day.nd) { app.appendChild(el("p", "note", "No competition data for " + shortDate(S.day) + " yet. Tap the pill to pick another day.")); footer(app, day); return; }
+    var f = filters();
+    if (f.org && f.org.some(function (m) { return !day.r[m]; })) app.appendChild(el("p", "note warn", f.org.filter(function (m) { return !day.r[m]; }).join(", ") + " didn't fit in Report for " + shortDate(S.day) + ": type the date and market in the chat, e.g. " + dateOf(S.day).getDate() + "-" + (dateOf(S.day).getMonth() + 1) + " " + f.org[0] + "."));
+    var st = stats(S.day);
+    tiles(app, st);
+    if (S.view === "clients") { renderClients(app, st); footer(app, day); return; }
+    top5(app, st);
+    stackedBar(app, "lang", null, {}, "Language");
+    stackedBar(app, "pcc", PCC, PCC_COLOURS, "Page position");
+    app.appendChild(el("div", "lbl", "Group by"));
+    var gb = el("div", "gb");
+    GROUP_ORDER.forEach(function (dim) { var b = el("button", "chip" + (S.groupBy === dim ? " on" : ""), DIMS[dim]); b.onclick = function () { S.groupBy = dim; haptic(); render(); }; gb.appendChild(b); });
+    app.appendChild(gb);
+    renderGroups(app);
+    footer(app, day);
+  }
+
+  function footer(app, day) {
+    var editions = day.nd ? "" : (day.r.All || []).map(function (s) { return s[0] + " " + s[4][0] + "/" + s[4][1]; }).join(", ");
+    app.appendChild(el("p", "foot", "Data read " + day.at + "." + (editions ? " Competitor main editions in: " + editions + "." : "")
+      + " Clients in competition that day, not in BCCL " + day.p + ", above " + RAW.min + "K SCM. Insights and older dates: /home in the chat."));
+  }
+
+  function marketRows(d, useEd) {  // Sales org cards: each market's own report, with the other filters applied
+    var day = dayOf(d), f = filters(), rows = [];
+    (day.mk || []).forEach(function (m) { if (!f.org || f.org.indexOf(m[0]) >= 0) rows = rows.concat(slice(d, "org", useEd, m[0])); });
+    return rows;
+  }
+
+  function renderGroups(app) {
+    var dim = S.groupBy, useEd = dim === "city" || dim === "edition";
+    var rows = dim === "org" ? marketRows(S.day, useEd) : slice(S.day, null, useEd), prev = previousDay(S.day);
+    var prevRows = !prev ? [] : dim === "org" ? marketRows(prev, useEd) : slice(prev, null, useEd);
+    var groups = {}, list = [], sum = 0;
+    function key(r) { return dim === "pcc" && r.pcc == null ? r.pccs[0] : r[dim]; }
+    rows.forEach(function (r) {
+      var k = key(r); if (k == null) return;
+      var g = groups[k]; if (!g) { g = groups[k] = { k: k, v: 0, clients: {} }; list.push(g); }
+      g.v += r.v; sum += r.v; g.clients[r.client] = (g.clients[r.client] || 0) + r.v;
+    });
+    var before = {}; prevRows.forEach(function (r) { var k = key(r); if (k != null) before[k] = (before[k] || 0) + r.v; });
+    list.sort(function (a, b) { return b.v - a.v; });
+    if (!list.length) { app.appendChild(el("p", "note", "Nothing in this slice.")); return; }
+    if (dim === "org" && dayOf(S.day).mk.some(function (m) { return !dayOf(S.day).r[m[0]]; })) app.appendChild(el("p", "note", "Some sales orgs didn't fit in Report today and aren't listed."));
+    list.slice(0, 25).forEach(function (g) {
+      var b = el("button", "grp"), h = el("div", "h");
+      h.appendChild(el("b", null, dim === "vertical" ? nice(g.k) : g.k));
+      var right = el("span", "v", fmt(g.v) + " "); if (prev) { var c = change(g.v, before[g.k] || 0); if (c) right.appendChild(c); }
+      h.appendChild(right); b.appendChild(h);
+      var sh = el("div", "share"), i = el("i"); i.style.width = (100 * g.v / list[0].v) + "%"; sh.appendChild(i); b.appendChild(sh);
+      var names = Object.keys(g.clients).sort(function (x, y) { return g.clients[y] - g.clients[x]; });
+      b.appendChild(el("div", "sub", plural(names.length, "client") + " · " + Math.round(100 * g.v / sum) + "% · " + names.slice(0, 3).map(function (n) { return short(n, 22) + " " + fmt(g.clients[n]); }).join(", ")));
+      b.onclick = function () { push(dim, g.k, true); };
+      app.appendChild(b);
+    });
+    if (list.length > 25) app.appendChild(el("p", "note", (list.length - 25) + " smaller ones not shown; filter to see them."));
+  }
+
+  function renderClients(app, st) {
+    var input = el("input"); input.type = "search"; input.placeholder = "Find a client, e.g. honda"; input.value = S.query;
+    app.appendChild(input);
+    var sorts = el("div", "lens");
+    [["scm", "SCM"], ["fpbp", "FP/BP"], ["days", "Days missed"], ["az", "A–Z"]].forEach(function (o) {
+      if (o[0] === "days" && !RAW.w) return;
+      var b = el("button", "chip" + (S.sort === o[0] ? " on" : ""), o[1]); b.onclick = function () { S.sort = o[0]; haptic(); render(); }; sorts.appendChild(b);
+    });
+    var cp = el("button", "chip", "⧉ Copy list"); sorts.appendChild(cp);
+    app.appendChild(sorts);
+    if (S.threshold) {
+      var keep = S.threshold; S.threshold = 0; var everyone = clientTotals(slice(S.day), S.day).length; S.threshold = keep;
+      if (everyone > st.clients.length) app.appendChild(el("p", "note warn", plural(everyone - st.clients.length, "client") + " below " + S.threshold + "K hidden."));
+    }
+    var count = el("p", "note"), card = el("div", "card"); app.appendChild(count); app.appendChild(card);
+    function days(c) { var h = history(c.name, S.day); return h ? h.missed : 0; }
     function fill() {
-      var words = state.query.toLowerCase().split(/\s+/).filter(Boolean);
-      var hits = list.filter(function (g) { return words.every(function (w) { return g.name.toLowerCase().indexOf(w) >= 0; }); });
-      count.textContent = words.length ? plural(hits.length, "client") + " match" + (hits.length === 1 ? "es" : "") : plural(list.length, "client") + ", largest first. Tap one for its editions.";
-      box.textContent = "";
-      box.hidden = !hits.length;
-      hits.forEach(function (g) {
-        var pubs = [];
-        g.parts.forEach(function (x) { pubs = pubs.concat(x.c[4]); });
-        box.appendChild(clientRow(g.name, 0, nice(g.vertical) + " · " + g.branch + " · " + g.parts.map(function (x) { return x.s[0]; }).join(", "), g.volume, max, pubs, ""));
+      card.textContent = "";
+      var words = S.query.toLowerCase().split(/\s+/).filter(Boolean);
+      var list = st.clients.filter(function (c) { return words.every(function (w) { return c.name.toLowerCase().indexOf(w) >= 0; }); });
+      list.sort(function (a, b) { return S.sort === "az" ? (a.name < b.name ? -1 : 1) : S.sort === "fpbp" ? b.fpbp - a.fpbp : S.sort === "days" ? days(b) - days(a) || b.v - a.v : b.v - a.v; });
+      count.textContent = words.length ? plural(list.length, "client") + " match" + (list.length === 1 ? "es" : "") : plural(list.length, "client") + ". Tap one for its editions.";
+      cp.onclick = function () { copy("Missed Ads " + shortDate(S.day) + " · " + viewName() + "\n" + list.slice(0, 25).map(function (c, i) { return (i + 1) + ". " + c.name + " · " + c.info.org + " · " + fmt(c.v); }).join("\n")); };
+      card.hidden = !list.length;
+      list.forEach(function (c) {
+        var b = el("button", "row"), left = el("span");
+        left.appendChild(el("div", "nm", c.name));
+        left.appendChild(el("div", "meta", nice(c.info.vertical) + " · " + c.info.langs.join(", ") + " · " + Object.keys(c.papers).join(", ")));
+        left.appendChild(tagsFor(c, false));
+        b.appendChild(left);
+        var right = el("span"); right.appendChild(el("div", "v", fmt(S.sort === "fpbp" ? c.fpbp : c.v)));
+        var pcs = el("div", "pcs"); PCC.filter(function (g) { return c.pcc[g]; }).forEach(function (g) { pcs.appendChild(el("em", "pc " + g, g)); }); right.appendChild(pcs);
+        b.appendChild(right);
+        b.onclick = function () { openDetail(c.name, list.map(function (x) { return x.name; })); };
+        card.appendChild(b);
       });
     }
-    input.oninput = function () { state.query = input.value; fill(); };
+    input.oninput = function () { S.query = input.value; fill(); };
     fill();
   }
 
-  function openDetail(name) {
-    var g = groups(state.market).filter(function (x) { return x.name === name; })[0];
-    if (!g) return;
-    var day = today(), d = $("detail");
-    d.textContent = "";
-    if (!nativeBack) {
-      var back = el("button", "backbtn", "‹ Back");
-      back.type = "button";
-      back.onclick = closeDetail;
-      d.appendChild(back);
-    }
-    d.appendChild(el("h2", null, g.name));
-    d.appendChild(el("p", "dmeta", nice(g.vertical) + " · " + g.branch + (state.market === "All" ? "" : " · " + state.market + " market")));
-    var big = el("p", "big");
-    big.appendChild(el("b", null, fmt(g.volume) + " SCM"));
-    big.appendChild(document.createTextNode(" in competition on " + longDate(day.d)));
-    d.appendChild(big);
-    g.parts.forEach(function (x) {
-      var s = x.s, c = x.c, card = el("section", "card"), head = el("div", "lh");
-      head.appendChild(el("b", null, s[0]));
-      head.appendChild(el("span", null, fmt(c[3])));
-      card.appendChild(head);
-      card.appendChild(el("p", "vs", s[1] + " (" + day.p + ") vs " + s[2].replace(/ - /g, ", ")));
-      c[4].forEach(function (p) {
-        var pub = el("div", "pub"), ph = el("div", "pubh");
-        var title = el("span");
-        title.appendChild(el("b", null, p[0]));
-        title.appendChild(document.createTextNode(" " + fmt(p[1]) + " · " + plural(p[2], "edition")));
-        ph.appendChild(title);
-        ph.appendChild(chips(p[3], p[3].length > 1));
-        pub.appendChild(ph);
-        if (p[4].length) {
-          p[4].forEach(function (e) {
-            var row = el("div", "ed");
-            row.appendChild(el("span", null, e[0]));
-            row.appendChild(el("span", "v", fmt(e[1])));
-            row.appendChild(chips(e[2].map(function (x) { return [x]; }), false));
-            pub.appendChild(row);
-          });
-        } else {
-          pub.appendChild(el("p", "vs", "The editions didn't fit in the page for this day: type the date and market in the chat to see them."));
-        }
-        card.appendChild(pub);
-      });
-      d.appendChild(card);
+  function openDetail(name, order) { haptic(); S.detail = { name: name, order: order || [name], split: "paper" }; render(); window.scrollTo(0, 0); }
+
+  function renderDetail(app) {
+    var D = S.detail, F = facts(S.day), info = F.clients[D.name] || { name: D.name, vertical: "-", org: "-", langs: [] };
+    var top = el("div", "top");
+    if (!nativeBack) { var bk = el("button", "backbtn", "‹ Back"); bk.onclick = back; top.appendChild(bk); }
+    top.appendChild(el("span", "note", (S.stack.map(function (x) { return x.value; }).join(" › ") || "All markets") + " · " + shortDate(S.day)));
+    app.appendChild(top);
+    var pub = F.pub.filter(function (r) { return r.client === D.name; }), ed = F.ed.filter(function (r) { return r.client === D.name; });
+    var total = pub.reduce(function (t, r) { return t + r.v; }, 0), inSlice = clientTotals(slice(S.day), S.day).filter(function (c) { return c.name === D.name; })[0];
+    var h = el("div", "card");
+    h.appendChild(el("div", "ch2")).appendChild(el("b", null, D.name));
+    h.appendChild(el("div", "meta", nice(info.vertical) + " · " + info.org + " · " + info.langs.join(", ")));
+    var big = el("div"); big.appendChild(el("b", null, fmt(total) + " SCM"));
+    big.appendChild(document.createTextNode(" in competition on " + shortDate(S.day) + (inSlice && Math.abs(inSlice.v - total) > 0.05 ? " · " + fmt(inSlice.v) + " in this view" : "")));
+    h.appendChild(big);
+    var hist = history(D.name, S.day), w = windowDays();
+    if (hist) {
+      h.appendChild(el("div", "meta", hist.before ? "Missed on " + hist.missed + " of the last " + hist.n + " days (all markets)" : "New: first miss in the last " + hist.n + " days"));
+      var dots = el("div", "dots");
+      w.forEach(function (x, n) { var i = el("i", (MASKS[D.name] & (1 << n) ? "on" : "") + (x === S.day ? " today" : "")); i.title = shortDate(x); dots.appendChild(i); });
+      h.appendChild(dots);
+    } else { var rt = repeatTag(D.name, S.day); if (rt) { var tg2 = el("div", "tags"); tg2.appendChild(el("span", "tag " + rt[1], rt[1] === "rep" ? "Also missed on " + shortDate(previousDay(S.day)) : "New: not missed on " + shortDate(previousDay(S.day)))); h.appendChild(tg2); } }
+    var tools = el("div", "lens"); tools.style.marginTop = "8px";
+    var cp = el("button", "chip", "⧉ Copy for WhatsApp");
+    cp.onclick = function () {
+      var papers = Object.keys(pub.reduce(function (o, r) { o[r.paper] = 1; return o; }, {}));
+      copy(D.name + " · " + info.org + " · " + nice(info.vertical) + ": " + fmt(total) + " SCM in " + papers.join(", ") + " (" + PCC.filter(function (g) { return pub.some(function (r) { return r.pcc === g; }); }).join("/") + ") on " + shortDate(S.day) + ", not in BCCL " + dayOf(S.day).p + "." + (hist && hist.before ? " Missed on " + hist.missed + " of the last " + hist.n + " days." : ""));
+    };
+    tools.appendChild(cp); h.appendChild(tools);
+    app.appendChild(h);
+
+    var sp = el("div", "card"), lens = el("div", "lens");
+    [["paper", "Paper"], ["city", "City"], ["pcc", "Page position"], ["lang", "Language"]].forEach(function (o) { var b = el("button", "chip" + (D.split === o[0] ? " on" : ""), o[1]); b.onclick = function () { D.split = o[0]; haptic(); render(); }; lens.appendChild(b); });
+    sp.appendChild(lens);
+    var src = D.split === "city" ? ed : pub, by = {};
+    src.forEach(function (r) { var k = r[D.split]; by[k] = (by[k] || 0) + r.v; });
+    var keys = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }), max = by[keys[0]] || 1;
+    keys.forEach(function (k) { var row = el("div", "split"); row.appendChild(el("span", null, k)); row.appendChild(el("b", null, fmt(by[k]))); var s = el("div", "share"), i = el("i"); i.style.width = (100 * by[k] / max) + "%"; s.appendChild(i); row.appendChild(s); sp.appendChild(row); });
+    if (!src.length) sp.appendChild(el("p", "note", "The editions didn't fit in Report for this day: type the date and client in the chat."));
+    app.appendChild(sp);
+
+    var eds = el("div", "card"); eds.appendChild(el("div", "ch2")).appendChild(el("b", null, "Editions"));
+    ed.slice().sort(function (a, b) { return b.v - a.v; }).forEach(function (r) {
+      var row = el("div", "ed"); row.appendChild(el("span", null, r.paper + " · " + r.label)); row.appendChild(el("b", null, fmt(r.v)));
+      var pcs = el("span", "pcs"); r.pccs.forEach(function (g) { pcs.appendChild(el("em", "pc " + g, g)); }); row.appendChild(pcs);
+      eds.appendChild(row);
     });
-    scrollBack = window.scrollY;
-    $("reportView").hidden = true;
-    d.hidden = false;
-    window.scrollTo(0, 0);
-    if (nativeBack) tg.BackButton.show();
+    var topEd = ed.slice().sort(function (a, b) { return b.v - a.v; })[0];
+    if (topEd) {
+      var others = Object.keys(F.ed.filter(function (r) { return r.edition === topEd.edition && r.client !== D.name; }).reduce(function (o, r) { o[r.client] = 1; return o; }, {})).length;
+      if (others) {
+        var l1 = el("button", "link", "Other clients in " + topEd.paper + " · " + topEd.label + " (" + others + ") ›");
+        l1.onclick = function () { S.detail = null; S.stack = [{ dim: "edition", value: topEd.edition }]; S.view = "clients"; haptic(); render(); window.scrollTo(0, 0); };
+        eds.appendChild(l1);
+      }
+    }
+    var l2 = el("button", "link", "Other " + nice(info.vertical) + " clients missed that day ›");
+    l2.onclick = function () { S.detail = null; S.stack = [{ dim: "vertical", value: info.vertical }]; S.view = "clients"; haptic(); render(); window.scrollTo(0, 0); };
+    eds.appendChild(l2);
+    app.appendChild(eds);
+
+    var i = D.order.indexOf(D.name), next = D.order[i + 1];
+    D.next = next || null;
+    if (next) {
+      var nv = F.pub.filter(function (r) { return r.client === next; }).reduce(function (t, r) { return t + r.v; }, 0);
+      D.nextText = "Next: " + short(next, 22) + " " + fmt(nv) + " ›";
+      if (!nativeNext) { var nb = el("button", "gonext", D.nextText); nb.onclick = onMain; app.appendChild(nb); }
+    }
   }
 
-  function closeDetail() {
-    $("detail").hidden = true;
-    $("reportView").hidden = false;
-    window.scrollTo(0, scrollBack);
-    if (nativeBack) tg.BackButton.hide();
+  function renderSheet() {
+    var bg = el("div", "sheetbg"), sh = el("div", "sheet");
+    bg.onclick = function (e) { if (e.target === bg) { S.sheet = false; render(); } };
+    sh.appendChild(el("h3", null, "Day"));
+    var dg = el("div", "daygrid");
+    RAW.days.forEach(function (day) {
+      var b = el("button", "cell" + (day.d === S.day ? " on" : ""));
+      b.appendChild(el("b", null, shortDate(day.d)));
+      var a = day.nd ? null : allStats(day.d);
+      b.appendChild(document.createTextNode(day.nd ? "no data yet" : (day.ar ? "arriving · " : "✓ · ") + fmt(a.scm) + " · " + plural(a.clients, "client")));
+      b.onclick = function () { S.day = day.d; S.sheet = false; S.detail = null; haptic(); render(); window.scrollTo(0, 0); };
+      dg.appendChild(b);
+    });
+    sh.appendChild(dg);
+    var day = dayOf(S.day), f = filters();
+    sh.appendChild(el("h3", null, "Market (sales org)"));
+    var og = el("div", "orggrid"), allB = el("button", "cell" + (!f.org ? " on" : ""));
+    allB.appendChild(el("b", null, "All")); allB.appendChild(document.createTextNode(day.nd ? "" : plural(allStats(S.day).clients, "client")));
+    allB.onclick = function () { S.stack = S.stack.filter(function (x) { return x.dim !== "org"; }); S.sheet = false; haptic(); render(); };
+    og.appendChild(allB);
+    (day.mk || []).forEach(function (m) {
+      var b = el("button", "cell" + (f.org && f.org.indexOf(m[0]) >= 0 ? " on" : ""));
+      b.appendChild(el("b", null, (m[0] === RAW.u ? "★ " : "") + m[0])); b.appendChild(document.createTextNode(m[1] + " · " + fmt(m[2]) + (day.r[m[0]] ? "" : " (chat)")));
+      b.onclick = function () { S.stack = S.stack.filter(function (x) { return x.dim !== "org"; }); S.stack.unshift({ dim: "org", value: m[0] }); S.sheet = false; haptic(); render(); };
+      og.appendChild(b);
+    });
+    sh.appendChild(og);
+    sh.appendChild(el("h3", null, "Saved views (☆ saves the current one)"));
+    var sv = el("div", "lens");
+    if (!S.views.length) sv.appendChild(el("p", "note", "None yet. Set up a view, e.g. DEL › Hindi with ≥5K, and tap ☆."));
+    S.views.forEach(function (v, n) {
+      var b = el("button", "chip", v.name);
+      b.onclick = function () { S.stack = v.stack.slice(); S.premium = !!v.premium; S.threshold = v.threshold || 0; S.view = v.view || "explore"; S.groupBy = v.groupBy || "lang"; S.sheet = false; S.detail = null; haptic(); render(); };
+      var x = el("button", "chip", "×"); x.title = "Delete " + v.name;
+      x.onclick = function () { S.views.splice(n, 1); saveViews(); render(); };
+      sv.appendChild(b); sv.appendChild(x);
+    });
+    sh.appendChild(sv);
+    bg.appendChild(sh);
+    document.body.appendChild(bg);
   }
 
   function start(d) {
-    data = normalise(d);
-    if (!data.days || !data.days.length) throw new Error("no days in the link");
-    state.day = data.days.some(function (x) { return x.d === data.first; }) ? data.first : data.days[0].d;
-    state.wanted = data.u || "All";
-    state.market = today().r[state.wanted] ? state.wanted : "All";
-    state.view = data.view === "clients" ? "clients" : "report";
-    $("rMarket").onchange = function () { state.market = state.wanted = this.value; state.query = ""; state.open = {}; haptic(); render(); window.scrollTo(0, 0); };
-    Array.prototype.forEach.call($("rView").children, function (b) {
-      b.onclick = function () { state.view = b.dataset.v; haptic(); render(); };
-    });
-    if (nativeBack) tg.BackButton.onClick(closeDetail);
-    render();
+    RAW = normalise(d);
+    if (!RAW.days || !RAW.days.length) throw new Error("no days in the link");
+    learnCities(); learnMasks();
+    S.day = RAW.days.some(function (x) { return x.d === RAW.first && !x.nd; }) ? RAW.first : (dataDays()[0] || RAW.days[0]).d;
+    if (RAW.u && dayOf(S.day).r[RAW.u]) S.stack = [{ dim: "org", value: RAW.u }];
+    S.home = JSON.stringify(S.stack);
+    if (RAW.view === "clients") S.view = "clients";
+    if (nativeBack) tg.BackButton.onClick(back);
+    if (nativeNext) tg.MainButton.onClick(onMain);
+    loadViews(render);
   }
 
-  if (packed.charAt(0) !== "R") {
-    fail("Open this page with Report, the button left of the Missed Ad Report Bot's text box in Telegram.");
-    return;
-  }
-  if (!window.DecompressionStream) {
-    fail("This version of Telegram can't open the report page. Update Telegram, or type the date and market in the chat, e.g. 31-10 DEL.");
-    return;
-  }
+  if (packed.charAt(0) !== "R") { fail("Open this page with Report, the button left of the Missed Ad Report Bot's text box in Telegram."); return; }
+  if (!window.DecompressionStream) { fail("This version of Telegram can't open the report page. Update Telegram, or type the date and market in the chat, e.g. 31-10 DEL."); return; }
   Promise.resolve().then(function () { return decode(packed.slice(1)); }).then(start).catch(function (e) {  // e.g. a cut-off link
     fail("The report in this link couldn't be read (" + (e && e.message) + "). Type /start in the chat to renew Report.");
   });
