@@ -190,18 +190,27 @@ input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);backg
   var MASKS = {};
   function learnMasks() {
     RAW.days.forEach(function (day) { (day.r.All || []).forEach(function (s) { s[5].forEach(function (c) { if (c[6] != null) MASKS[c[0]] = MASKS[c[0]] | c[6]; }); }); });
+    var w = windowDays();  // a client listed in a day's All report was missed that day, even if the masks were read before that report
+    RAW.days.forEach(function (day) { var n = w.indexOf(day.d); if (n >= 0) (day.r.All || []).forEach(function (s) { s[5].forEach(function (c) { MASKS[c[0]] = MASKS[c[0]] | (1 << n); }); }); });
   }
   function windowDays() { if (!RAW.w) return []; var start = dateOf(RAW.w[0]), out = []; for (var n = 0; n < RAW.w[1]; n++) out.push(iso(new Date(start.getFullYear(), start.getMonth(), start.getDate() + n))); return out; }
-  function history(name, d) {  // {missed: days missed up to d in the window, before: days missed before d, n: window length} or null
-    var w = windowDays(), mask = MASKS[name];
-    if (!w.length || mask == null || w.indexOf(d) < 0) return null;
+  function history(name, d) {  // {missed: days missed from the window's start to d, before: of those, the days before d, n: days from the window's start to d, from: the window's start} or null
+    var w = windowDays(), mask = MASKS[name], last = w.indexOf(d);
+    if (last < 0 || mask == null) return null;
     var missed = 0, before = 0;
-    w.forEach(function (x, n) { if (x <= d && mask & (1 << n)) { missed++; if (x < d) before++; } });
-    return { missed: missed, before: before, n: w.length };
+    for (var n = 0; n <= last; n++) if (mask & (1 << n)) { missed++; if (n < last) before++; }
+    return { missed: missed, before: before, n: last + 1, from: w[0] };
   }
-  function repeatTag(name, d) {  // ["Repeat 8/14" | "New", class] from the 14 days, else from the previous day in the link
+  function dayMonth(s) { var d = dateOf(s); return d.getDate() + " " + MONTHS[d.getMonth()]; }
+  function span(a, b) {  // "18–30 Oct", or "25 Oct – 7 Nov" across months
+    if (a === b) return dayMonth(b);
+    return dateOf(a).getMonth() === dateOf(b).getMonth() ? dateOf(a).getDate() + "–" + dayMonth(b) : dayMonth(a) + " – " + dayMonth(b);
+  }
+  function historyText(h, d) { return (h.before ? "Missed on " + h.missed + " of " : "New: first miss in ") + plural(h.n, "day") + ", " + span(h.from, d); }
+  function repeatTag(name, d) {  // ["Repeat 4/13" | "New", class]: days missed from the window's start to d, else vs the previous day in the link
     var h = history(name, d);
     if (h) return h.before ? ["Repeat " + h.missed + "/" + h.n, "rep"] : ["New", "new"];
+    if (windowDays().indexOf(d) >= 0) return null;  // in the window but not in an All report yet: no tag, rather than a previous-day one under "since <start>"
     var prev = previousDay(d);
     if (!prev) return null;
     return facts(prev).clients[name] ? ["Repeat", "rep"] : ["New", "new"];
@@ -439,7 +448,7 @@ input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);backg
   function top5(app, st) {
     var card = el("div", "card"), h = el("div", "ch2");
     h.appendChild(el("b", null, "Top 5 to act"));
-    h.appendChild(el("span", null, RAW.w ? "Repeat / New over 14 days" : previousDay(S.day) ? "Repeat / New vs " + shortDate(previousDay(S.day)) : ""));
+    h.appendChild(el("span", null, windowDays().indexOf(S.day) >= 0 ? "Repeat / New since " + dayMonth(RAW.w[0]) : previousDay(S.day) ? "Repeat / New vs " + shortDate(previousDay(S.day)) : ""));
     card.appendChild(h);
     var lens = el("div", "lens");
     [["big", "Biggest"], ["fpbp", "FP/BP"], ["rep", "Repeat"], ["new", "New"]].forEach(function (o) { var b = el("button", "chip" + (S.lens === o[0] ? " on" : ""), o[1]); b.onclick = function () { S.lens = o[0]; haptic(); render(); }; lens.appendChild(b); });
@@ -544,10 +553,11 @@ input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);backg
   function renderClients(app, st) {
     var input = el("input"); input.type = "search"; input.placeholder = "Find a client, e.g. honda"; input.value = S.query;
     app.appendChild(input);
-    var sorts = el("div", "lens");
+    var sorts = el("div", "lens"), inWindow = windowDays().indexOf(S.day) >= 0;
+    var sort = S.sort === "days" && !inWindow ? "scm" : S.sort;  // Days missed comes back on a day inside the window
     [["scm", "SCM"], ["fpbp", "FP/BP"], ["days", "Days missed"], ["az", "A–Z"]].forEach(function (o) {
-      if (o[0] === "days" && !RAW.w) return;
-      var b = el("button", "chip" + (S.sort === o[0] ? " on" : ""), o[1]); b.onclick = function () { S.sort = o[0]; haptic(); render(); }; sorts.appendChild(b);
+      if (o[0] === "days" && !inWindow) return;  // no day counts for a day outside the window
+      var b = el("button", "chip" + (sort === o[0] ? " on" : ""), o[1]); b.onclick = function () { S.sort = o[0]; haptic(); render(); }; sorts.appendChild(b);
     });
     var cp = el("button", "chip", "⧉ Copy list"); sorts.appendChild(cp);
     app.appendChild(sorts);
@@ -561,7 +571,7 @@ input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);backg
       card.textContent = "";
       var words = S.query.toLowerCase().split(/\s+/).filter(Boolean);
       var list = st.clients.filter(function (c) { return words.every(function (w) { return c.name.toLowerCase().indexOf(w) >= 0; }); });
-      list.sort(function (a, b) { return S.sort === "az" ? (a.name < b.name ? -1 : 1) : S.sort === "fpbp" ? b.fpbp - a.fpbp : S.sort === "days" ? days(b) - days(a) || b.v - a.v : b.v - a.v; });
+      list.sort(function (a, b) { return sort === "az" ? (a.name < b.name ? -1 : 1) : sort === "fpbp" ? b.fpbp - a.fpbp : sort === "days" ? days(b) - days(a) || b.v - a.v : b.v - a.v; });
       count.textContent = words.length ? plural(list.length, "client") + " match" + (list.length === 1 ? "es" : "") : plural(list.length, "client") + ". Tap one for its editions.";
       cp.onclick = function () { copy("Missed Ads " + shortDate(S.day) + " · " + viewName() + "\n" + list.slice(0, 25).map(function (c, i) { return (i + 1) + ". " + c.name + " · " + c.info.org + " · " + fmt(c.v); }).join("\n")); };
       card.hidden = !list.length;
@@ -571,7 +581,7 @@ input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);backg
         left.appendChild(el("div", "meta", nice(c.info.vertical) + " · " + c.info.langs.join(", ") + " · " + Object.keys(c.papers).join(", ")));
         left.appendChild(tagsFor(c, false));
         b.appendChild(left);
-        var right = el("span"); right.appendChild(el("div", "v", fmt(S.sort === "fpbp" ? c.fpbp : c.v)));
+        var right = el("span"); right.appendChild(el("div", "v", fmt(sort === "fpbp" ? c.fpbp : c.v)));
         var pcs = el("div", "pcs"); PCC.filter(function (g) { return c.pcc[g]; }).forEach(function (g) { pcs.appendChild(el("em", "pc " + g, g)); }); right.appendChild(pcs);
         b.appendChild(right);
         b.onclick = function () { openDetail(c.name, list.map(function (x) { return x.name; })); };
@@ -600,16 +610,16 @@ input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);backg
     h.appendChild(big);
     var hist = history(D.name, S.day), w = windowDays();
     if (hist) {
-      h.appendChild(el("div", "meta", hist.before ? "Missed on " + hist.missed + " of the last " + hist.n + " days (all markets)" : "New: first miss in the last " + hist.n + " days"));
+      h.appendChild(el("div", "meta", historyText(hist, S.day) + " (all markets)"));
       var dots = el("div", "dots");
-      w.forEach(function (x, n) { var i = el("i", (MASKS[D.name] & (1 << n) ? "on" : "") + (x === S.day ? " today" : "")); i.title = shortDate(x); dots.appendChild(i); });
+      w.slice(0, hist.n).forEach(function (x, n) { var i = el("i", (MASKS[D.name] & (1 << n) ? "on" : "") + (x === S.day ? " today" : "")); i.title = shortDate(x); dots.appendChild(i); });
       h.appendChild(dots);
     } else { var rt = repeatTag(D.name, S.day); if (rt) { var tg2 = el("div", "tags"); tg2.appendChild(el("span", "tag " + rt[1], rt[1] === "rep" ? "Also missed on " + shortDate(previousDay(S.day)) : "New: not missed on " + shortDate(previousDay(S.day)))); h.appendChild(tg2); } }
     var tools = el("div", "lens"); tools.style.marginTop = "8px";
     var cp = el("button", "chip", "⧉ Copy for WhatsApp");
     cp.onclick = function () {
       var papers = Object.keys(pub.reduce(function (o, r) { o[r.paper] = 1; return o; }, {}));
-      copy(D.name + " · " + info.org + " · " + nice(info.vertical) + ": " + fmt(total) + " SCM in " + papers.join(", ") + " (" + PCC.filter(function (g) { return pub.some(function (r) { return r.pcc === g; }); }).join("/") + ") on " + shortDate(S.day) + ", not in BCCL " + dayOf(S.day).p + "." + (hist && hist.before ? " Missed on " + hist.missed + " of the last " + hist.n + " days." : ""));
+      copy(D.name + " · " + info.org + " · " + nice(info.vertical) + ": " + fmt(total) + " SCM in " + papers.join(", ") + " (" + PCC.filter(function (g) { return pub.some(function (r) { return r.pcc === g; }); }).join("/") + ") on " + shortDate(S.day) + ", not in BCCL " + dayOf(S.day).p + "." + (hist && hist.before ? " " + historyText(hist, S.day) + "." : ""));
     };
     tools.appendChild(cp); h.appendChild(tools);
     app.appendChild(h);
