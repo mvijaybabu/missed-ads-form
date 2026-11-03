@@ -480,7 +480,12 @@ input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);backg
     if (day.ar) app.appendChild(el("p", "note warn", "Still arriving: about " + day.ar[0] + " of the usual " + day.ar[1] + " competitor main editions are in, so more clients may appear later."));
     if (day.nd) { app.appendChild(el("p", "note", "No competition data for " + shortDate(S.day) + " yet. Tap the pill to pick another day.")); footer(app, day); return; }
     var f = filters();
-    if (f.org && f.org.some(function (m) { return !day.r[m]; })) app.appendChild(el("p", "note warn", f.org.filter(function (m) { return !day.r[m]; }).join(", ") + " didn't fit in Report for " + shortDate(S.day) + ": type the date and market in the chat, e.g. " + dateOf(S.day).getDate() + "-" + (dateOf(S.day).getMonth() + 1) + " " + f.org[0] + "."));
+    if (f.org && f.org.some(function (m) { return !day.r[m]; })) {  // a market missing from the link: trimmed, or no missed clients that day
+      var listed = (day.mk || []).map(function (m) { return m[0]; });
+      var cut = f.org.filter(function (m) { return !day.r[m] && listed.indexOf(m) >= 0; }), none = f.org.filter(function (m) { return !day.r[m] && listed.indexOf(m) < 0; });
+      if (cut.length) app.appendChild(el("p", "note warn", cut.join(", ") + " didn't fit in Report for " + shortDate(S.day) + ": type the date and market in the chat, e.g. " + dateOf(S.day).getDate() + "-" + (dateOf(S.day).getMonth() + 1) + " " + cut[0] + "."));
+      if (none.length) app.appendChild(el("p", "note", none.join(", ") + " had no missed clients on " + shortDate(S.day) + "."));
+    }
     var st = stats(S.day);
     tiles(app, st);
     if (S.view === "clients") { renderClients(app, st); footer(app, day); return; }
@@ -521,7 +526,7 @@ input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);backg
     var before = {}; prevRows.forEach(function (r) { var k = key(r); if (k != null) before[k] = (before[k] || 0) + r.v; });
     list.sort(function (a, b) { return b.v - a.v; });
     if (!list.length) { app.appendChild(el("p", "note", "Nothing in this slice.")); return; }
-    if (dim === "org" && dayOf(S.day).mk.some(function (m) { return !dayOf(S.day).r[m[0]]; })) app.appendChild(el("p", "note", "Some sales orgs didn't fit in Report today and aren't listed."));
+    if (dim === "org" && dayOf(S.day).mk.some(function (m) { return !dayOf(S.day).r[m[0]]; })) app.appendChild(el("p", "note", "Some sales orgs didn't fit in Report for " + shortDate(S.day) + " and aren't listed."));
     list.slice(0, 25).forEach(function (g) {
       var b = el("button", "grp"), h = el("div", "h");
       h.appendChild(el("b", null, dim === "vertical" ? nice(g.k) : g.k));
@@ -616,7 +621,8 @@ input[type=search]{width:100%;font:inherit;font-size:16px;color:var(--ink);backg
     src.forEach(function (r) { var k = r[D.split]; by[k] = (by[k] || 0) + r.v; });
     var keys = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }), max = by[keys[0]] || 1;
     keys.forEach(function (k) { var row = el("div", "split"); row.appendChild(el("span", null, k)); row.appendChild(el("b", null, fmt(by[k]))); var s = el("div", "share"), i = el("i"); i.style.width = (100 * by[k] / max) + "%"; s.appendChild(i); row.appendChild(s); sp.appendChild(row); });
-    if (!src.length) sp.appendChild(el("p", "note", "The editions didn't fit in Report for this day: type the date and client in the chat."));
+    if (!src.length) sp.appendChild(el("p", "note", D.split === "city" ? "The editions didn't fit in Report for this day: type part of the client's name in the chat for its editions."  // the chat's client search
+      : "Not in the All-markets report for this day yet."));  // seen only in a market's report, read at a different time
     app.appendChild(sp);
 
     var eds = el("div", "card"); eds.appendChild(el("div", "ch2")).appendChild(el("b", null, "Editions"));
