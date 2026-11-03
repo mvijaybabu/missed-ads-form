@@ -7,12 +7,10 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://telegram.org 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Missed Ads report</title>
 <!--
-  The Missed Ad Report Bot's page (a Telegram Mini App). It never contacts any server and holds no data of its own.
-  - Form: opened from the Form button under the bot's text box. The bot puts the recent days' status and the market
-    codes in the link; the choice goes back to the bot through Telegram (Telegram.WebApp.sendData), Telegram closes
-    the page, and the bot answers in the chat with a short card.
-  - Report: opened from that card's Open button. The bot puts the day's report in the part of the link after #R
-    (compressed JSON), which stays in the phone: the web host never receives it.
+  The Missed Ad Report Bot's Report page (a Telegram Mini App), opened from Report, left of the bot's text box.
+  It never contacts any server and holds no data of its own: the bot puts the last few days' reports (All and each
+  market, with each client's editions) as compressed JSON in the part of the button's link after #R, which stays in
+  the phone (the web host never receives it). The bot renews that link after each background read.
 -->
 <script>try { sessionStorage.removeItem("__telegram__initParams"); } catch (e) {}  // Telegram's script would reuse an earlier launch's</script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -29,35 +27,21 @@
 html{-webkit-text-size-adjust:100%}
 body{margin:0 auto;max-width:760px;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:12px 16px calc(24px + env(safe-area-inset-bottom))}
 h1{font-size:17px;font-weight:600;margin:4px 4px 12px}
-.sec{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:12px}
-.lbl{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin-bottom:8px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{border:1px solid var(--line);background:none;color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+input[type=text],select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+select{appearance:auto}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
 .chip small{color:var(--mut);font-size:12px;margin-left:4px}
 .chip.on{border-color:var(--acc);background:var(--acc);color:var(--acc-ink);font-weight:600}
 .chip.on small{color:var(--acc-ink);opacity:.85}
-input[type=date],select,input[type=text]{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
-select{appearance:auto}
-#olderBox{margin-top:10px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.seg button{border:0;border-right:1px solid var(--line);background:none;color:var(--ink);font:inherit;font-size:14px;padding:9px 4px;cursor:pointer}
+.seg{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14px;padding:9px 4px;cursor:pointer}
 .seg button:last-child{border-right:0}
 .seg button.on{background:var(--acc);color:var(--acc-ink);font-weight:600}
-.hint{font-size:13px;color:var(--mut);margin:8px 2px 0}
-.hint.warn{color:var(--warn)}
-.tick{display:flex;gap:10px;align-items:center;font-size:15px;margin-top:12px;cursor:pointer}
-.tick input{width:20px;height:20px;accent-color:var(--acc)}
-.off{opacity:.4;pointer-events:none}
-#go{display:none;width:100%;border:0;border-radius:10px;padding:13px;font:inherit;font-weight:600;background:var(--acc);color:var(--acc-ink);cursor:pointer}
-#preview{display:none;font-size:13px;background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px}
-#status{font-size:14px;margin:0 4px 12px;padding:10px 12px;border-radius:10px;background:var(--card);overflow-wrap:anywhere}
-#status.warn{color:var(--warn)}
 .foot{font-size:12px;color:var(--mut);margin:4px 4px 0}
-/* report view */
 .rsub{font-size:13px;color:var(--mut);margin:-8px 4px 12px}
 .ctl{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px;margin-bottom:12px}
 .ctl select{padding:9px 6px}
-.seg.two{grid-template-columns:repeat(2,1fr)}
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
 .tile{background:var(--card);border-radius:12px;padding:10px 12px;min-width:0}
 .tile b{display:block;font-size:22px;font-weight:700;line-height:1.2}
@@ -73,6 +57,7 @@ select{appearance:auto}
 .vs{font-size:12px;color:var(--mut);margin:2px 0 6px}
 .row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:8px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:9px 0;font:inherit;color:inherit;cursor:pointer}
 .row.nork{grid-template-columns:minmax(0,1fr) auto}
+.card > .row:first-child{border-top:0}
 .rk{font-size:12px;color:var(--mut);padding-top:2px}
 .mid{min-width:0;display:flex;flex-direction:column;gap:3px}
 .nm{font-size:14px;font-weight:600;overflow-wrap:anywhere}
@@ -97,19 +82,20 @@ select{appearance:auto}
 .pubh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
 .pubh b{font-weight:600}
 .ed{display:grid;grid-template-columns:minmax(0,1fr) auto 76px;gap:8px;align-items:center;font-size:13px;padding:4px 0 0}
-.card > .row:first-child{border-top:0}
 .ed span:first-child{overflow-wrap:anywhere}
 </style>
 </head>
 <body>
-<div id="reportView" hidden>
+<div id="reportView">
   <h1 id="rTitle">Missed Ads report</h1>
   <p class="rsub" id="rSub"></p>
-  <div class="ctl">
+  <div class="chips" id="rDays"></div>
+  <div class="ctl" id="rCtl">
     <select id="rMarket" aria-label="Market"></select>
-    <div class="seg two" id="rView"><button type="button" data-v="report">Report</button><button type="button" data-v="clients">Clients</button></div>
+    <div class="seg" id="rView"><button type="button" data-v="report">Report</button><button type="button" data-v="clients">Clients</button></div>
   </div>
   <p class="note warn" id="rArriving" hidden></p>
+  <p class="note warn" id="rMarketNote" hidden></p>
   <div class="tiles" id="rTiles"></div>
   <div class="mix" id="rMix"></div>
   <div class="legend" id="rLegend"></div>
@@ -117,251 +103,14 @@ select{appearance:auto}
   <p class="foot" id="rFoot"></p>
 </div>
 <div id="detail" hidden></div>
-<div id="formView">
-<div id="preview">Preview outside Telegram. In the bot, open this form from the <b>Form</b> button under the text box.</div>
-<h1>Missed Ads report</h1>
-
-<div class="sec" id="daySec">
-  <span class="lbl">Day</span>
-  <div class="chips" id="days"></div>
-  <div id="olderBox" hidden><input type="date" id="older" aria-label="Older date"></div>
-  <p class="hint" id="dayHint"></p>
-</div>
-
-<div class="sec" id="marketSec">
-  <span class="lbl">Market</span>
-  <select id="market" aria-label="Market"></select>
-  <p class="hint" id="marketHint" hidden></p>
-  <label class="tick" id="usualRow" hidden><input type="checkbox" id="usual"><span id="usualText"></span></label>
-</div>
-
-<div class="sec" id="showSec">
-  <span class="lbl">Show</span>
-  <div class="seg" id="show">
-    <button type="button" data-v="report" class="on">Report</button>
-    <button type="button" data-v="clients">Clients</button>
-    <button type="button" data-v="insights">Insights</button>
-  </div>
-  <p class="hint" id="showHint"></p>
-</div>
-
-<div class="sec">
-  <span class="lbl">Or find a client</span>
-  <input type="text" id="client" maxlength="60" autocomplete="off" autocapitalize="characters" placeholder="Part of the name, e.g. honda">
-  <p class="hint">Finds the client in every market over the last few days, with the editions it appeared in.</p>
-</div>
-
-<p id="status" hidden></p>
-<button type="button" id="go">Show report</button>
-<p class="foot" id="foot"></p>
-</div>
 
 <script>
-(function () {  // the form
+(function () {
   "use strict";
-  if (/^#R/.test(location.hash)) return;  // a report link: the script below shows it
+  var packed = location.hash.replace(/^#/, "").split(/[?&#]/)[0];  // the #R part; Telegram adds its own parameters after it
   var tg = window.Telegram && window.Telegram.WebApp;
   var inTelegram = !!(tg && tg.platform && tg.platform !== "unknown");
-  // Only the Form button under the text box can send; it opens with no signed user data in this launch's link.
-  var fromKeyboard = inTelegram && !/(?:^#|[?&])tgWebAppData=[^&]/.test(location.hash);
-  var q = new URLSearchParams(location.search);
-  var DAY = 864e5;
-  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  var $ = function (id) { return document.getElementById(id); };
-
-  // What the bot put in the link: d=2026-11-01:a:DEL.CHE~2026-10-31:c:DEL.CHE.MUM (a still arriving, c complete; markets
-  // with missed clients, busiest first), k = every market code, sel = the day to start on, m = the market to start on,
-  // u = the person's usual market, n = days on Home, back = how many days back a report can go, at = when the bot built it.
-  function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
-  function parseIso(s) { var p = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return p ? new Date(+p[1], p[2] - 1, +p[3]) : null; }
-  function label(d) { return WEEKDAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()]; }
-  function codes(s) { return (s || "").split(".").filter(function (c) { return /^[A-Z]{3}$/.test(c); }); }
-
-  var known = {};
-  (q.get("d") || "").split("~").forEach(function (part) {
-    var f = part.split(":");
-    if (parseIso(f[0])) known[f[0]] = { status: f[1] === "c" ? "complete" : f[1] === "a" ? "arriving" : "", markets: codes(f[2]) };
-  });
-  var allMarkets = codes(q.get("k"));
-  var usual = codes(q.get("u"))[0] || "";
-  var homeDays = Math.min(Math.max(parseInt(q.get("n"), 10) || 4, 1), 7);
-  var back = Math.min(Math.max(parseInt(q.get("back"), 10) || 14, homeDays), 31);
-
-  var today = new Date(); today.setHours(0, 0, 0, 0);
-  var yesterday = new Date(today.getTime() - DAY);
-  var earliest = new Date(today.getTime() - back * DAY);
-  var recent = [];
-  for (var i = 0; i < homeDays; i++) recent.push(new Date(yesterday.getTime() - i * DAY));
-  var olderLatest = new Date(recent[recent.length - 1].getTime() - DAY);
-
-  var state = { day: null, older: false, market: "All", wanted: "All", show: "report" };  // wanted: the market picked, shown when the day has it
-  var startDay = parseIso(q.get("sel"));  // the bot's newest complete day; else the newest one marked complete, else yesterday
-  var firstComplete = recent.filter(function (d) { return (known[iso(d)] || {}).status === "complete"; })[0];
-  state.day = iso(startDay && recent.some(function (d) { return iso(d) === iso(startDay); }) ? startDay : firstComplete || recent[0]);
-  state.wanted = codes(q.get("m"))[0] || "All";
-
-  function haptic() { try { tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged(); } catch (e) {} }
-
-  function say(text, warn) {  // a line just above the button, scrolled into view
-    var s = $("status");
-    s.textContent = text;
-    s.className = warn ? "warn" : "";
-    s.hidden = false;
-    s.scrollIntoView({ block: "nearest" });
-  }
-  var NOT_FROM_BUTTON = "This form can only send when it is opened with the Form button under the bot's text box. Close it and tap Form there.";
-
-  function renderDays() {
-    var box = $("days");
-    box.textContent = "";
-    recent.forEach(function (d) {
-      var b = document.createElement("button");
-      var info = known[iso(d)] || {};
-      b.type = "button";
-      b.className = "chip" + (!state.older && state.day === iso(d) ? " on" : "");
-      b.textContent = label(d);
-      if (info.status) {
-        var s = document.createElement("small");
-        s.textContent = info.status === "complete" ? "✓" : "arriving";
-        b.appendChild(s);
-      }
-      b.onclick = function () { state.day = iso(d); state.older = false; haptic(); update(); };
-      box.appendChild(b);
-    });
-    var o = document.createElement("button");
-    o.type = "button";
-    o.className = "chip" + (state.older ? " on" : "");
-    o.textContent = state.older && state.day ? label(parseIso(state.day)) : "Older…";
-    o.onclick = function () {
-      state.older = true; haptic();
-      var input = $("older");
-      if (!input.value) input.value = iso(olderLatest);
-      state.day = input.value;
-      update();
-      try { input.showPicker && input.showPicker(); } catch (e) {}
-    };
-    box.appendChild(o);
-    $("olderBox").hidden = !state.older;
-    var info = known[state.day];
-    $("dayHint").className = "hint";
-    $("dayHint").textContent = state.older ? "Reports go back to " + label(earliest) + "."
-      : info && info.status === "arriving" ? "Competitor data for this day is still arriving, so more clients may appear later."
-      : info && info.status === "complete" ? "Nearly all competitor editions are in for this day." : "";
-  }
-
-  function renderMarkets() {
-    var info = known[state.day];
-    var list = info && !state.older ? info.markets : allMarkets.slice().sort();
-    var select = $("market");
-    select.textContent = "";
-    [["All", "All markets"]].concat(list.map(function (c) { return [c, c]; })).forEach(function (pair) {
-      var opt = document.createElement("option");
-      opt.value = pair[0];
-      opt.textContent = pair[1] + (pair[0] === usual ? "  (yours)" : "");
-      select.appendChild(opt);
-    });
-    var hint = $("marketHint");
-    hint.hidden = true;
-    state.market = state.wanted === "All" || list.indexOf(state.wanted) >= 0 ? state.wanted : "All";
-    if (state.market !== state.wanted && info && !state.older) {
-      hint.textContent = state.wanted + " has no missed clients on " + label(parseIso(state.day)) + ".";
-      hint.className = "hint warn";
-      hint.hidden = false;
-    }
-    select.value = state.market;
-    if (info && !state.older && hint.hidden) {
-      hint.textContent = list.length ? "Markets with missed clients that day, busiest first." : "No missed clients for this day yet.";
-      hint.className = "hint";
-      hint.hidden = false;
-    }
-    var showUsual = state.market !== "All" && state.market !== usual;
-    $("usualRow").hidden = !showUsual;
-    $("usualText").textContent = "Make " + state.market + " my usual market";
-    if (!showUsual) $("usual").checked = false;
-  }
-
-  function buttonText() {
-    if ($("client").value.trim().length >= 2) return "Find client";
-    return { report: "Show report", clients: "Show clients", insights: "Show insights" }[state.show];
-  }
-
-  function update() {
-    renderDays();
-    renderMarkets();
-    Array.prototype.forEach.call($("show").children, function (b) { b.classList.toggle("on", b.dataset.v === state.show); });
-    $("showHint").textContent = state.show === "insights" ? "Insights cover the 14 days up to the day picked." : "";
-    var finding = $("client").value.trim().length >= 2;
-    ["daySec", "marketSec", "showSec"].forEach(function (id) { $(id).classList.toggle("off", finding); });
-    if (inTelegram) tg.MainButton.setText(buttonText());
-    else $("go").textContent = buttonText();
-  }
-
-  $("market").onchange = function () { state.wanted = this.value; haptic(); update(); };
-  $("older").min = iso(earliest);
-  $("older").max = iso(olderLatest);
-  $("older").onchange = function () {
-    var d = parseIso(this.value);
-    if (d && d >= earliest && d <= olderLatest) { state.day = this.value; update(); }
-  };
-  Array.prototype.forEach.call($("show").children, function (b) {
-    b.onclick = function () { state.show = b.dataset.v; haptic(); update(); };
-  });
-  $("client").oninput = update;
-  $("client").onkeydown = function (e) { if (e.key === "Enter") { this.blur(); submit(); } };
-
-  function submit() {
-    var client = $("client").value.trim();
-    var d = parseIso(state.day);
-    if (client.length < 2 && !(d && d >= earliest && d <= yesterday)) {
-      $("dayHint").textContent = "Pick a day from " + label(earliest) + " to " + label(yesterday) + ".";
-      $("dayHint").className = "hint warn";
-      return;
-    }
-    var finding = client.length >= 2;
-    var payload = { v: 1, day: state.day, market: state.market, show: state.show, client: finding ? client : "",
-                    usual: !finding && $("usual").checked };
-    var data = JSON.stringify(payload);
-    if (!inTelegram) { say("Preview only. In Telegram this would send: " + data); return; }
-    if (!fromKeyboard) { say(NOT_FROM_BUTTON, true); return; }
-    try {
-      tg.sendData(data);  // Telegram closes the form and the bot gets the choice
-      say("Sending to the bot…");
-      setTimeout(function () {  // still open: Telegram didn't take it
-        say("Telegram didn't send the form (" + tg.platform + ", version " + tg.version + "). Close it, tap Form under the bot's text box and try again.", true);
-      }, 3000);
-    } catch (e) {
-      say("Telegram refused the form: " + (e && e.message), true);
-    }
-  }
-
-  if (inTelegram) {
-    document.documentElement.setAttribute("data-tg", "");
-    tg.ready();
-    tg.expand();
-    tg.MainButton.setText(buttonText());
-    tg.MainButton.onClick(submit);
-    tg.MainButton.show();
-  } else {
-    $("preview").style.display = "block";
-    $("go").style.display = "block";
-    $("go").onclick = submit;
-  }
-  var at = q.get("at");
-  $("foot").textContent = (at ? "Day status as of " + at.replace("T", " ") + ". " : "")
-    + (inTelegram ? "Telegram " + tg.platform + " " + tg.version + (fromKeyboard ? ", opened from Form." : ", opened from a link.") : "");
-  update();
-  if (inTelegram && !fromKeyboard) say(NOT_FROM_BUTTON, true);
-})();
-</script>
-
-<script>
-(function () {  // the report, from the link's #R part
-  "use strict";
-  var packed = location.hash.replace(/^#/, "").split(/[?&#]/)[0];  // Telegram adds its own parameters after it
-  if (packed.charAt(0) !== "R") return;
-  var tg = window.Telegram && window.Telegram.WebApp;
-  var inTelegram = !!(tg && tg.platform && tg.platform !== "unknown");
+  var nativeBack = inTelegram && typeof tg.isVersionAtLeast === "function" && tg.isVersionAtLeast("6.1");  // Telegram's Back button
   var $ = function (id) { return document.getElementById(id); };
   var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -369,8 +118,6 @@ select{appearance:auto}
   var LANGUAGE_COLOURS = ["#2481cc", "#e67e22", "#16a085", "#8e44ad", "#c0392b", "#7f8c8d"];
   var TOP = 10;  // clients per language before "Show all"
 
-  $("formView").hidden = true;
-  $("reportView").hidden = false;
   if (inTelegram) {
     document.documentElement.setAttribute("data-tg", "");
     tg.ready();
@@ -390,9 +137,16 @@ select{appearance:auto}
   function nice(s) {  // 'CONS.DURABLES' -> 'Cons.Durables', 'BFSI' stays
     return (s || "-").replace(/[A-Za-z]+/g, function (w) { return ACRONYMS[w.toUpperCase()] ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); });
   }
-  function longDate(s) { var p = s.split("-"), d = new Date(+p[0], p[1] - 1, +p[2]); return WEEKDAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear(); }
+  function dateOf(s) { var p = s.split("-"); return new Date(+p[0], p[1] - 1, +p[2]); }
+  function shortDate(s) { var d = dateOf(s); return WEEKDAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()]; }
+  function longDate(s) { return shortDate(s) + " " + dateOf(s).getFullYear(); }
   function haptic() { try { tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged(); } catch (e) {} }
-  function fail(text) { var body = $("rBody"); body.textContent = ""; body.appendChild(el("p", "note warn", text)); }
+  function fail(text) {
+    ["rDays", "rCtl", "rTiles", "rMix", "rLegend"].forEach(function (id) { $(id).hidden = true; });
+    var body = $("rBody");
+    body.textContent = "";
+    body.appendChild(el("p", "note warn", text));
+  }
 
   function decode(b64) {  // base64url -> zlib -> JSON
     var s = b64.replace(/-/g, "+").replace(/_/g, "/");
@@ -403,12 +157,22 @@ select{appearance:auto}
     return new Response(stream).text().then(JSON.parse);
   }
 
-  // The data (see page_report in bot.py): r[market] = sections [language, BCCL title, competitors, volume,
-  // [editions in, this month], clients]; client [name, vertical, branch, volume, publications, exact volume];
-  // publication [name, volume, editions, [[PCC, volume]], editions]; edition [name, volume, [PCC groups]].
-  var data, state = { market: "All", view: "report", query: "", open: {} }, scrollBack = 0;
+  // The data (see report_link and page_report in bot.py): days[] each {d, p (BCCL period), ar ([editions in, usual]
+  // while arriving), nd (no data yet), at (read time), mk ([[market, clients, volume]]), t ({market: total}),
+  // r ({market: sections})}; a section is [language, BCCL title, competitors, volume, [editions in, this month], clients];
+  // a client [name, vertical, branch, volume, publications, exact volume]; a publication [name, volume, editions,
+  // [[PCC, volume]], editions]; an edition [name, volume, [PCC groups]]. A one-day link from a report card (v 1) has d, r... itself.
+  var data, state = { day: null, market: "All", wanted: "All", view: "report", query: "", open: {} }, scrollBack = 0;  // wanted: the market picked, shown on days that have it
 
-  function sections(market) { return (data.r[market] || []).filter(function (s) { return s[5].length; }); }
+  function normalise(d) {
+    if (d.v === 1) {
+      return { min: d.min, first: d.d, u: d.m, view: d.w,
+               days: [{ d: d.d, p: d.p, ar: d.ar, nd: false, at: d.at, mk: d.mk, t: d.t || {}, r: d.r }] };
+    }
+    return d;
+  }
+  function today() { return data.days.filter(function (x) { return x.d === state.day; })[0] || data.days[0]; }
+  function sections(market) { return (today().r[market] || []).filter(function (s) { return s[5].length; }); }
   function groups(market) {  // each client once, across languages, largest first
     var byName = {}, list = [];
     sections(market).forEach(function (s) {
@@ -457,13 +221,61 @@ select{appearance:auto}
     return b;
   }
 
+  function renderDays() {
+    var box = $("rDays");
+    box.textContent = "";
+    box.hidden = data.days.length < 2;
+    data.days.forEach(function (x) {
+      var b = el("button", "chip" + (x.d === state.day ? " on" : ""), shortDate(x.d));
+      b.type = "button";
+      b.appendChild(el("small", null, x.nd ? "no data" : x.ar ? "arriving" : "✓"));
+      b.onclick = function () {
+        if (state.day === x.d) return;
+        state.day = x.d; state.query = ""; state.open = {};
+        state.market = x.r[state.wanted] ? state.wanted : "All";
+        haptic(); render(); window.scrollTo(0, 0);
+      };
+      box.appendChild(b);
+    });
+  }
+
+  function renderMarkets() {
+    var day = today(), select = $("rMarket");
+    select.textContent = "";
+    var all = day.r.All ? groups("All").length : 0;
+    [["All", "All markets · " + all]].concat(day.mk.map(function (m) {
+      return [m[0], m[0] + " · " + m[1] + " · " + fmt(m[2]) + (day.r[m[0]] ? "" : " (not included)")];
+    })).forEach(function (o) {
+      var opt = el("option", null, o[1]);
+      opt.value = o[0];
+      opt.disabled = !day.r[o[0]];
+      select.appendChild(opt);
+    });
+    select.value = state.market;
+  }
+
   function render() {
+    var day = today();
+    renderDays();
+    renderMarkets();
+    $("rTitle").textContent = "Missed Ads · " + longDate(day.d);
+    $("rSub").textContent = "Clients in competition that day, not in BCCL " + day.p + ", above " + data.min + "K SCM.";
+    $("rArriving").hidden = !day.ar;
+    if (day.ar) $("rArriving").textContent = "Still arriving: about " + day.ar[0] + " of the usual " + day.ar[1] + " competitor main editions are in, so more clients may appear later.";
+    var note = $("rMarketNote"), when = dateOf(day.d);  // the person's market isn't shown: say why
+    note.hidden = day.nd || state.wanted === "All" || state.market === state.wanted;
+    if (!note.hidden) {
+      note.textContent = day.mk.some(function (m) { return m[0] === state.wanted; })
+        ? state.wanted + " didn't fit in Report for " + shortDate(day.d) + ", so all markets are shown. Type " + when.getDate() + "-" + (when.getMonth() + 1) + " " + state.wanted + " in the chat for it."
+        : "No clients above " + data.min + "K SCM missed BCCL in " + state.wanted + " on " + shortDate(day.d) + ", so all markets are shown.";
+    }
     var secs = sections(state.market), list = groups(state.market);
     var total = secs.reduce(function (t, s) { return t + s[3]; }, 0);  // for the mix bar; the tile shows the bot's own total
-    var shownTotal = data.t && data.t[state.market] != null ? data.t[state.market] : total;
+    var shownTotal = day.t && day.t[state.market] != null ? day.t[state.market] : total;
     Array.prototype.forEach.call($("rView").children, function (b) { b.classList.toggle("on", b.dataset.v === state.view); });
     var tiles = $("rTiles");
     tiles.textContent = "";
+    tiles.hidden = day.nd;
     [[String(list.length), list.length === 1 ? "client" : "clients"], [fmt(shownTotal), "SCM in competition"], [String(secs.length), secs.length === 1 ? "language" : "languages"]]
       .forEach(function (t) { var d = el("div", "tile"); d.appendChild(el("b", null, t[0])); d.appendChild(el("span", null, t[1])); tiles.appendChild(d); });
     var mix = $("rMix"), legend = $("rLegend");
@@ -482,17 +294,20 @@ select{appearance:auto}
     mix.hidden = legend.hidden = !secs.length;
     var body = $("rBody");
     body.textContent = "";
-    if (!list.length) {
+    if (day.nd) {
+      body.appendChild(el("p", "note", "No competition data for " + longDate(day.d) + " yet. It usually comes in over the next few days."));
+    } else if (!list.length) {
       body.appendChild(el("p", "note", "No clients above " + data.min + "K SCM missed BCCL in " + (state.market === "All" ? "any market" : state.market) + " that day."));
     } else if (state.view === "report") {
       renderReport(body, secs);
     } else {
       renderClients(body, list);
     }
-    var editions = (data.r[state.market] || []).map(function (s) { return s[0] + " " + s[4][0] + "/" + s[4][1]; }).join(", ");
-    var missing = data.mk.some(function (m) { return !data.r[m[0]]; });
-    $("rFoot").textContent = "Data read " + data.at + ". Competitor main editions with data: " + editions + "."
-      + (missing ? " Markets marked “from Form” didn't fit in this link: pick them in the Form." : "");
+    var editions = day.nd ? "" : (day.r[state.market] || []).map(function (s) { return s[0] + " " + s[4][0] + "/" + s[4][1]; }).join(", ");
+    var missing = day.mk.some(function (m) { return !day.r[m[0]]; });
+    $("rFoot").textContent = "Data read " + day.at + "." + (editions ? " Competitor main editions with data: " + editions + "." : "")
+      + (missing ? " Markets marked “not included” didn't fit: type the date and market in the chat, e.g. " + dateOf(day.d).getDate() + "-" + (dateOf(day.d).getMonth() + 1) + " DEL." : "")
+      + " Insights and older dates: /home in the chat.";
   }
 
   function renderReport(body, secs) {
@@ -501,7 +316,7 @@ select{appearance:auto}
       head.appendChild(el("b", null, s[0]));
       head.appendChild(el("span", null, plural(s[5].length, "client") + " · " + fmt(s[3])));
       card.appendChild(head);
-      card.appendChild(el("p", "vs", s[1] + " (" + data.p + ") vs " + s[2].replace(/ - /g, ", ")));
+      card.appendChild(el("p", "vs", s[1] + " (" + today().p + ") vs " + s[2].replace(/ - /g, ", ")));
       var max = Math.max.apply(null, s[5].map(function (c) { return c[3]; }));
       var shown = state.open[s[0]] ? s[5] : s[5].slice(0, TOP);
       shown.forEach(function (c, i) {
@@ -548,9 +363,9 @@ select{appearance:auto}
   function openDetail(name) {
     var g = groups(state.market).filter(function (x) { return x.name === name; })[0];
     if (!g) return;
-    var d = $("detail");
+    var day = today(), d = $("detail");
     d.textContent = "";
-    if (!inTelegram) {
+    if (!nativeBack) {
       var back = el("button", "backbtn", "‹ Back");
       back.type = "button";
       back.onclick = closeDetail;
@@ -560,14 +375,14 @@ select{appearance:auto}
     d.appendChild(el("p", "dmeta", nice(g.vertical) + " · " + g.branch + (state.market === "All" ? "" : " · " + state.market + " market")));
     var big = el("p", "big");
     big.appendChild(el("b", null, fmt(g.volume) + " SCM"));
-    big.appendChild(document.createTextNode(" in competition on " + longDate(data.d)));
+    big.appendChild(document.createTextNode(" in competition on " + longDate(day.d)));
     d.appendChild(big);
     g.parts.forEach(function (x) {
       var s = x.s, c = x.c, card = el("section", "card"), head = el("div", "lh");
       head.appendChild(el("b", null, s[0]));
       head.appendChild(el("span", null, fmt(c[3])));
       card.appendChild(head);
-      card.appendChild(el("p", "vs", s[1] + " (" + data.p + ") vs " + s[2].replace(/ - /g, ", ")));
+      card.appendChild(el("p", "vs", s[1] + " (" + day.p + ") vs " + s[2].replace(/ - /g, ", ")));
       c[4].forEach(function (p) {
         var pub = el("div", "pub"), ph = el("div", "pubh");
         var title = el("span");
@@ -585,7 +400,7 @@ select{appearance:auto}
             pub.appendChild(row);
           });
         } else {
-          pub.appendChild(el("p", "vs", "The editions didn't fit in this link: use Show in chat under the card."));
+          pub.appendChild(el("p", "vs", "The editions didn't fit in the page for this day: type the date and market in the chat to see them."));
         }
         card.appendChild(pub);
       });
@@ -595,50 +410,41 @@ select{appearance:auto}
     $("reportView").hidden = true;
     d.hidden = false;
     window.scrollTo(0, 0);
-    if (inTelegram) tg.BackButton.show();
+    if (nativeBack) tg.BackButton.show();
   }
 
   function closeDetail() {
     $("detail").hidden = true;
     $("reportView").hidden = false;
     window.scrollTo(0, scrollBack);
-    if (inTelegram) tg.BackButton.hide();
+    if (nativeBack) tg.BackButton.hide();
   }
 
   function start(d) {
-    data = d;
-    state.market = data.r[data.m] ? data.m : "All";
-    state.view = data.w === "clients" ? "clients" : "report";
-    $("rTitle").textContent = "Missed Ads · " + longDate(data.d);
-    $("rSub").textContent = "Clients in competition that day, not in BCCL " + data.p + ", above " + data.min + "K SCM.";
-    var select = $("rMarket"), all = groups("All").length;
-    [["All", "All markets · " + all]].concat(data.mk.map(function (m) {
-      return [m[0], m[0] + " · " + m[1] + " · " + fmt(m[2]) + (data.r[m[0]] ? "" : " (from Form)")];
-    })).forEach(function (o) {
-      var opt = el("option", null, o[1]);
-      opt.value = o[0];
-      opt.disabled = !data.r[o[0]];
-      select.appendChild(opt);
-    });
-    select.value = state.market;
-    select.onchange = function () { state.market = select.value; state.query = ""; state.open = {}; haptic(); render(); window.scrollTo(0, 0); };
+    data = normalise(d);
+    if (!data.days || !data.days.length) throw new Error("no days in the link");
+    state.day = data.days.some(function (x) { return x.d === data.first; }) ? data.first : data.days[0].d;
+    state.wanted = data.u || "All";
+    state.market = today().r[state.wanted] ? state.wanted : "All";
+    state.view = data.view === "clients" ? "clients" : "report";
+    $("rMarket").onchange = function () { state.market = state.wanted = this.value; state.query = ""; state.open = {}; haptic(); render(); window.scrollTo(0, 0); };
     Array.prototype.forEach.call($("rView").children, function (b) {
       b.onclick = function () { state.view = b.dataset.v; haptic(); render(); };
     });
-    if (data.ar) {
-      $("rArriving").textContent = "Still arriving: about " + data.ar[0] + " of the usual " + data.ar[1] + " competitor main editions are in, so more clients may appear later.";
-      $("rArriving").hidden = false;
-    }
-    if (inTelegram) tg.BackButton.onClick(closeDetail);
+    if (nativeBack) tg.BackButton.onClick(closeDetail);
     render();
   }
 
+  if (packed.charAt(0) !== "R") {
+    fail("Open this page with Report, the button left of the Missed Ad Report Bot's text box in Telegram.");
+    return;
+  }
   if (!window.DecompressionStream) {
-    fail("This version of Telegram can't open the report page. Update Telegram, or use Show in chat under the card.");
+    fail("This version of Telegram can't open the report page. Update Telegram, or type the date and market in the chat, e.g. 31-10 DEL.");
     return;
   }
   Promise.resolve().then(function () { return decode(packed.slice(1)); }).then(start).catch(function (e) {  // e.g. a cut-off link
-    fail("The report in this link couldn't be read (" + (e && e.message) + "). Use Show in chat under the card.");
+    fail("The report in this link couldn't be read (" + (e && e.message) + "). Type /start in the chat to renew Report.");
   });
 })();
 </script>
